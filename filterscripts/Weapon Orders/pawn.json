@@ -1,0 +1,13 @@
+{
+	"user": "Danix43",
+	"repo": "WeaponOrder",
+	"entry": "orders.pwn",
+	"output": "../orders.amx",
+	"dependencies": [
+		"sampctl/samp-stdlib",
+		"YashasSamaga/I-ZCMD"
+	],
+	"runtime": {
+		"plugins": ["izcmd"]
+	}
+}

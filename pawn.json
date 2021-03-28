@@ -1,0 +1,31 @@
+{
+	"user": "Danix43",
+	"repo": "SampWarSystemClanClr",
+	"entry": "base.pwn",
+	"output": "base.amx",
+	"local": true,
+	"dependencies": [
+		"sampctl/samp-stdlib",
+		"pBlueG/SA-MP-MySQL",
+		"maddinat0r/sscanf",
+		"YashasSamaga/I-ZCMD"
+	],
+	"runtime": {
+		"hostname": "War Between Mafia - Clan CLR",
+		"rcon": false,
+		"language": "Romana / Tiganeasca",
+		"mapname": "Peris / Ferentexas",
+		"maxplayers": 20,
+		"rcon_password": "danix1923",
+		"weburl": "discord.gg/SE5yvJyX5C",
+		"announce": false,
+		"filterscripts": [
+			"orders"
+		],
+		"plugins": [
+			"SA-MP-MySQL",
+			"sscanf",
+			"izcmd"
+		]
+	}
+}
