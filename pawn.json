@@ -1,8 +1,8 @@
 {
 	"user": "Danix43",
 	"repo": "SampWarSystemClanClr",
-	"entry": "base.pwn",
-	"output": "base.amx",
+	"entry": "gamemodes/base.pwn",
+	"output": "gamemodes/base.amx",
 	"local": true,
 	"dependencies": [
 		"sampctl/samp-stdlib",
@@ -13,6 +13,7 @@
 	"runtime": {
 		"hostname": "War Between Mafia - Clan CLR",
 		"rcon": false,
+		"port": 7777,
 		"language": "Romana / Tiganeasca",
 		"mapname": "Peris / Ferentexas",
 		"maxplayers": 20,
