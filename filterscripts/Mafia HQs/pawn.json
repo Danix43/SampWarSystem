@@ -1,0 +1,14 @@
+{
+	"user": "Danix43",
+	"repo": "MafiaHQs",
+	"entry": "mafia.pwn",
+	"output": "../mafia.amx",
+	"dependencies": [
+		"sampctl/samp-stdlib",
+		"YashasSamaga/I-ZCMD",
+		"oscar-broman/strlib"
+	],
+	"runtime": {
+		"plugins": ["izcmd", "strlib"]
+	}
+}

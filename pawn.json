@@ -10,6 +10,14 @@
 		"maddinat0r/sscanf",
 		"YashasSamaga/I-ZCMD"
 	],
+	"builds": [
+		{
+			"name": "main",
+			"includes": [
+				"legacy"
+			]
+		}
+	],
 	"runtime": {
 		"hostname": "War Between Mafia - Clan CLR",
 		"rcon": false,
@@ -21,12 +29,14 @@
 		"weburl": "discord.gg/SE5yvJyX5C",
 		"announce": false,
 		"filterscripts": [
-			"orders"
+			"orders",
+			"mafia"
 		],
 		"plugins": [
 			"SA-MP-MySQL",
 			"sscanf",
-			"izcmd"
+			"izcmd",
+			"a_zone"
 		]
 	}
 }
