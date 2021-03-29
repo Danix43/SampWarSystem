@@ -3,6 +3,9 @@
 #include <sscanf2>
 #include <a_zone>
 
+
+
+
 // all turfs 
 new turfs[25];
 

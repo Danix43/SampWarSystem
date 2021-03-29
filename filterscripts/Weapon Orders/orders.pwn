@@ -45,11 +45,13 @@ COMMAND:order3(playerid, params[]) {
 }
 
 COMMAND:order4(playerid, params[]) {
-    GivePlayerWeapon(playerid, 24, 150);
-    GivePlayerWeapon(playerid, 31, 150);
-    GivePlayerWeapon(playerid, 33, 150);
-    GivePlayerWeapon(playerid, 32, 150);
-    GivePlayerWeapon(playerid, 27, 150);
-    SendClientMessage(playerid, 0xFFFFFF, "Given order 4");
+    if (GetPlayerInterior(playerid) != 0) {
+        GivePlayerWeapon(playerid, 24, 150);
+        GivePlayerWeapon(playerid, 31, 150);
+        GivePlayerWeapon(playerid, 33, 150);
+        GivePlayerWeapon(playerid, 32, 150);
+        GivePlayerWeapon(playerid, 27, 150);
+        SendClientMessage(playerid, 0xFFFFFF, "Given order 4");
+    }
     return 1;
 }

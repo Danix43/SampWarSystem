@@ -40,22 +40,22 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys) {
         if (GetPlayerInterior(playerid) == 0) {
             // SP HQ
             if (IsPlayerInRangeOfPoint(playerid, 10, 1454.88538, 751.07147, 11.02340)) {
-                SetPlayerInterior(playerid, 3);
-                SetPlayerPos(playerid, 1212.019897, -28.663099, 1000.953125);
+                SetPlayerInterior(playerid, 18);
+                SetPlayerPos(playerid, 1727.2853, -1642.9451, 20.2254);
             }
             // RDT HQ
             if (IsPlayerInRangeOfPoint(playerid, 10, 2633.78174, 1825.46545, 11.02340)) {
-                SetPlayerInterior(playerid, 2);
-                SetPlayerPos(playerid, 1204.809936, -11.586799, 1000.921875);
+                SetPlayerInterior(playerid, 3);
+                SetPlayerPos(playerid, -2638.8232, 1407.3395, 906.4609);
             }
         }
         // SP HQ
-        if (GetPlayerInterior(playerid) == 3) {
+        if (GetPlayerInterior(playerid) == 18) {
             SetPlayerInterior(playerid, 0);
             SetPlayerPos(playerid, 1454.88538, 751.07147, 11.02340);
         }
         // RDT HQ
-        if (GetPlayerInterior(playerid) == 2) {
+        if (GetPlayerInterior(playerid) == 3) {
             SetPlayerInterior(playerid, 0);
             SetPlayerPos(playerid, 2633.78174, 1825.46545, 11.02340);
         }
