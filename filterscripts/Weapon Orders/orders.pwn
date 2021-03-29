@@ -18,23 +18,29 @@ public OnFilterScriptExit() {
 // -------------------- COMMANDS --------------------  
 
 COMMAND:order1(playerid, params[]) {
-    GivePlayerWeapon(playerid, 24, 150);
-    SendClientMessage(playerid, 0xFFFFFF, "Given order 1");      
+    if (GetPlayerInterior(playerid) != 0) {
+        GivePlayerWeapon(playerid, 24, 150);
+        SendClientMessage(playerid, 0x000000FF, "Given order 1");
+    }
     return 1;
 }
 
 COMMAND:order2(playerid, params[]) {
-    GivePlayerWeapon(playerid, 24, 150);
-    GivePlayerWeapon(playerid, 31, 150);
-    SendClientMessage(playerid, 0xFFFFFF, "Given order 2");      
+    if (GetPlayerInterior(playerid) != 0) {
+        GivePlayerWeapon(playerid, 24, 150);
+        GivePlayerWeapon(playerid, 31, 150);
+        SendClientMessage(playerid, 0x000000FF, "Given order 2");
+    }
     return 1;
 }
 
 COMMAND:order3(playerid, params[]) {
-    GivePlayerWeapon(playerid, 24, 150);
-    GivePlayerWeapon(playerid, 31, 150);
-    GivePlayerWeapon(playerid, 33, 150);
-    SendClientMessage(playerid, 0xFFFFFF, "Given order 3");      
+    if (GetPlayerInterior(playerid) != 0) {
+        GivePlayerWeapon(playerid, 24, 150);
+        GivePlayerWeapon(playerid, 31, 150);
+        GivePlayerWeapon(playerid, 33, 150);
+        SendClientMessage(playerid, 0x000000FF, "Given order 3");
+    }
     return 1;
 }
 
