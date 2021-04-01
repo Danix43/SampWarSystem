@@ -8,6 +8,8 @@
 #define PRESSED(%0) \
 (((newkeys & ( % 0)) == ( % 0)) && ((oldkeys & ( % 0)) != ( % 0)))
 
+#define RDT_CAR_COLOR 121
+#define SP_CAR_COLOR 211
 
 // SP
 new spvehicles[10];
@@ -75,26 +77,26 @@ addHQRDT() {
 
 // color 149
 addVehiclesSP() {
-    spvehicles[0] = AddStaticVehicle(522, 1412.7795, 746.3126, 10.3922, 267.8583, 211, 255); // nrgsp1
-    spvehicles[1] = AddStaticVehicle(522, 1413.5082, 749.2159, 10.3936, 272.6732, 211, 255); // nrgsp2
-    spvehicles[2] = AddStaticVehicle(522, 1412.5800, 755.8980, 10.3909, 271.5344, 211, 255); // nrgsp3
-    spvehicles[3] = AddStaticVehicle(522, 1413.1470, 759.3210, 10.3994, 275.6730, 211, 255); // nrgsp4
-    spvehicles[4] = AddStaticVehicle(411, 1445.7037, 762.5338, 10.5474, 89.8119, 211, 255); // infsp
-    spvehicles[5] = AddStaticVehicle(411, 1445.6853, 743.2895, 10.5474, 90.9583, 211, 255); // infsp
-    spvehicles[6] = AddStaticVehicle(409, 1446.6243, 751.2015, 10.6203, 359.1673, 211, 255); // limosp
-    spvehicles[7] = AddStaticVehicle(579, 1413.0048, 752.7371, 10.6317, 269.8256, 211, 255); // huntleysp
+    spvehicles[0] = AddStaticVehicle(522, 1412.7795, 746.3126, 10.3922, 267.8583, SP_CAR_COLOR, SP_CAR_COLOR); // nrgsp1
+    spvehicles[1] = AddStaticVehicle(522, 1413.5082, 749.2159, 10.3936, 272.6732, SP_CAR_COLOR, SP_CAR_COLOR); // nrgsp2
+    spvehicles[2] = AddStaticVehicle(522, 1412.5800, 755.8980, 10.3909, 271.5344, SP_CAR_COLOR, SP_CAR_COLOR); // nrgsp3
+    spvehicles[3] = AddStaticVehicle(522, 1413.1470, 759.3210, 10.3994, 275.6730, SP_CAR_COLOR, SP_CAR_COLOR); // nrgsp4
+    spvehicles[4] = AddStaticVehicle(411, 1445.7037, 762.5338, 10.5474, 89.8119, SP_CAR_COLOR, SP_CAR_COLOR); // infsp
+    spvehicles[5] = AddStaticVehicle(411, 1445.6853, 743.2895, 10.5474, 90.9583, SP_CAR_COLOR, SP_CAR_COLOR); // infsp
+    spvehicles[6] = AddStaticVehicle(409, 1446.6243, 751.2015, 10.6203, 359.1673, SP_CAR_COLOR, SP_CAR_COLOR); // limosp
+    spvehicles[7] = AddStaticVehicle(579, 1413.0048, 752.7371, 10.6317, 269.8256, SP_CAR_COLOR, SP_CAR_COLOR); // huntleysp
 }
 
 // color 161
 addVehiclesRDT() {
-    rdtvehicles[0] = AddStaticVehicle(409, 2619.5093, 1823.1813, 10.6203, 0.4462, 161, 255); // limordt
-    rdtvehicles[1] = AddStaticVehicle(411, 2619.4358, 1831.5000, 10.5474, 359.7305, 161, 255); // infrdt
-    rdtvehicles[2] = AddStaticVehicle(411, 2619.2791, 1815.8684, 10.5474, 179.2588, 161, 255); // infrdt
-    rdtvehicles[3] = AddStaticVehicle(522, 2591.7991, 1811.8635, 10.3947, 91.3857, 161, 255); // nrgrdt
-    rdtvehicles[4] = AddStaticVehicle(522, 2591.5432, 1815.1005, 10.3918, 90.2116, 161, 255); // nrgrdt
-    rdtvehicles[5] = AddStaticVehicle(522, 2591.2476, 1833.6570, 10.4048, 89.9670, 161, 255); // nrgrdt
-    rdtvehicles[6] = AddStaticVehicle(522, 2591.3049, 1837.1725, 10.4036, 89.3817, 161, 255); // nrgrdt
-    rdtvehicles[7] = AddStaticVehicle(579, 2595.3154, 1823.3834, 10.6317, 91.7420, 161, 255); // huntleyrdt
+    rdtvehicles[0] = AddStaticVehicle(409, 2619.5093, 1823.1813, 10.6203, 0.4462, RDT_CAR_COLOR, RDT_CAR_COLOR); // limordt
+    rdtvehicles[1] = AddStaticVehicle(411, 2619.4358, 1831.5000, 10.5474, 359.7305, RDT_CAR_COLOR, RDT_CAR_COLOR); // infrdt
+    rdtvehicles[2] = AddStaticVehicle(411, 2619.2791, 1815.8684, 10.5474, 179.2588, RDT_CAR_COLOR, RDT_CAR_COLOR); // infrdt
+    rdtvehicles[3] = AddStaticVehicle(522, 2591.7991, 1811.8635, 10.3947, 91.3857, RDT_CAR_COLOR, RDT_CAR_COLOR); // nrgrdt
+    rdtvehicles[4] = AddStaticVehicle(522, 2591.5432, 1815.1005, 10.3918, 90.2116, RDT_CAR_COLOR, RDT_CAR_COLOR); // nrgrdt
+    rdtvehicles[5] = AddStaticVehicle(522, 2591.2476, 1833.6570, 10.4048, 89.9670, RDT_CAR_COLOR, RDT_CAR_COLOR); // nrgrdt
+    rdtvehicles[6] = AddStaticVehicle(522, 2591.3049, 1837.1725, 10.4036, 89.3817, RDT_CAR_COLOR, RDT_CAR_COLOR); // nrgrdt
+    rdtvehicles[7] = AddStaticVehicle(579, 2595.3154, 1823.3834, 10.6317, 91.7420, RDT_CAR_COLOR, RDT_CAR_COLOR); // huntleyrdt
 }
 
 
@@ -125,4 +127,12 @@ COMMAND:fvr(playerid, params[]) {
         }
         return 1;
     }
+}
+
+COMMAND:heal(playerid, params[]) {
+    if (GetPlayerInterior(playerid) == 3 || GetPlayerInterior(playerid) == 18) {
+        SendClientMessage(playerid, 0xFF0000, "Ai luat cox si ai primit heal!");
+        SetPlayerHealth(playerid, 100);
+    }
+    return 1;
 }

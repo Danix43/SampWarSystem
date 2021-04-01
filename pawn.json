@@ -3,40 +3,73 @@
 	"repo": "SampWarSystemClanClr",
 	"entry": "gamemodes/base.pwn",
 	"output": "gamemodes/base.amx",
-	"local": true,
 	"dependencies": [
 		"sampctl/samp-stdlib",
-		"pBlueG/SA-MP-MySQL",
 		"maddinat0r/sscanf",
-		"YashasSamaga/I-ZCMD"
+		"YashasSamaga/I-ZCMD",
+		"pawn-lang/YSI-Includes",
+		"oscar-broman/strlib",
+		"Sreyas-Sreelal/samp-bcrypt",
+		"pawn-lang/sa-mp-fixes"
 	],
-	"builds": [
-		{
-			"name": "main",
-			"includes": [
-				"legacy"
-			]
-		}
-	],
+	"local": true,
 	"runtime": {
-		"hostname": "War Between Mafia - Clan CLR",
-		"rcon": false,
-		"port": 7777,
-		"language": "Romana / Tiganeasca",
-		"mapname": "Peris / Ferentexas",
-		"maxplayers": 20,
-		"rcon_password": "danix1923",
-		"weburl": "discord.gg/SE5yvJyX5C",
-		"announce": false,
+		"version": "0.3.7",
+		"mode": "server",
 		"filterscripts": [
 			"orders",
-			"mafia"
+			"mafia",
+			"tools"
 		],
 		"plugins": [
 			"SA-MP-MySQL",
 			"sscanf",
 			"izcmd",
-			"a_zone"
-		]
-	}
+			"a_zone",
+			"strlib"
+		],
+		"rcon_password": "danix1923",
+		"port": 7777,
+		"hostname": "War Between Mafia - Clan CLR",
+		"maxplayers": 20,
+		"language": "Romana / Tiganeasca",
+		"mapname": "Peris / Ferentexas",
+		"weburl": "discord.gg/SE5yvJyX5C",
+		"gamemodetext": "Unknown",
+		"announce": false,
+		"lanmode": false,
+		"query": true,
+		"rcon": false,
+		"logqueries": false,
+		"sleep": 5,
+		"maxnpc": 0,
+		"stream_rate": 1000,
+		"stream_distance": 200,
+		"onfoot_rate": 30,
+		"incar_rate": 30,
+		"weapon_rate": 30,
+		"chatlogging": true,
+		"timestamp": true,
+		"messageholelimit": 3000,
+		"messageslimit": 500,
+		"ackslimit": 3000,
+		"playertimeout": 10000,
+		"minconnectiontime": 0,
+		"lagcompmode": 1,
+		"connseedtime": 300000,
+		"db_logging": false,
+		"db_log_queries": false,
+		"conncookies": true,
+		"cookielogging": false,
+		"output": true
+	},
+	"builds": [
+		{
+			"name": "main",
+			"includes": [
+				"legacy"
+			],
+			"compiler": {}
+		}
+	]
 }
