@@ -1,6 +1,5 @@
 #include <a_samp>
 #include <fixes> 
-#include <other> 
 #include <izcmd>
 #include <sscanf2>
 #include <a_zone>
@@ -14,7 +13,6 @@
 
 #define DIALOG_LOGIN 1337
 #define DIALOG_REGISTER 1338
-
 
 static DB:connection;
 
@@ -100,8 +98,9 @@ loadTurfs() {
 }
 
 public OnPlayerRequestClass(playerid, classid) {
-    SetSpawnInfo(playerid, 0, 0, 1958.33, 1343.12, 15.36, 269.15, 0, 0, 0, 0, 0, 0);
-    SpawnPlayer(playerid);
+    // SetSpawnInfo(playerid, 0, 0, 1958.33, 1343.12, 15.36, 269.15, 0, 0, 0, 0, 0, 0);
+    // SpawnPlayer(playerid);
+    return 1;
 }
 
 public OnPlayerConnect(playerid) {
@@ -201,7 +200,6 @@ public KickWithDelay(playerid) {
     return 1;
 }
 
-
 // ----------------------- COMMANDS ----------------------- 
 
 COMMAND:setskin(playerid, params[]) {
@@ -233,5 +231,11 @@ COMMAND:help(playerid) {
 }
 
 COMMAND:id(playerid, params[]) {
+    new id;
+    if (sscanf(params, "u", id)) {
+        SendClientMessage(playerid, 0xFF0000FF, "Foloseste: /id [id|nume player]");
+    } else {
+        
+    }
     return 1;
 }

@@ -17,8 +17,8 @@
 		"version": "0.3.7",
 		"mode": "server",
 		"filterscripts": [
-			"orders",
 			"mafia",
+			"faction",
 			"tools"
 		],
 		"plugins": [

@@ -18,12 +18,10 @@ new spvehicles[10];
 new rdtvehicles[10];
 
 
-main() {
-    print("Filterscript loaded in main");
-}
+// ----------------------- GAME CALLBACKS ----------------------- 
 
 public OnFilterScriptInit() {
-    print("Mafia HQs and Vehicles filterscript loaded");
+    print("Faction filterscript loaded");
     // SP
     addHQSP();
     addVehiclesSP();
@@ -31,10 +29,6 @@ public OnFilterScriptInit() {
     // RDT
     addHQRDT();
     addVehiclesRDT();
-}
-
-public OnFilterScriptExit() {
-    print("Mafia HQs and Vehicles filterscript unloaded");
 }
 
 public OnPlayerKeyStateChange(playerid, newkeys, oldkeys) {
