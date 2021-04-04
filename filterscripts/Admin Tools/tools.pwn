@@ -68,19 +68,12 @@ COMMAND:setfactionleader(playerid, params[]) {
         if (IsPlayerAdmin(playerid)) {
             new name[30];
             GetPlayerName(input[0], name, sizeof(name));
-
-            printf("name: %s, id: %s", name, input[1]);
-
             new query[150];
             format(query, sizeof(query),
                 "UPDATE Players SET player_faction = '%s', faction_rank = '%s' WHERE player_name = '%s'",
                 input[1], "7", name);
-            printf("update query: %s", query);
-
             if (db_free_result(db_query(connection, query)) == 1) {
-                print("Update done");
-                SendClientMessage(playerid, -1, "Update done");
-                new message[50];
+                new message[150];
                 format(message, sizeof(message), "Noul lider al mafiei %s este %s. Felicitari!", input[1], name);
                 SendClientMessageToAll(0x00FF00FF, message);
             }

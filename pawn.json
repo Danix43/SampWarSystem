@@ -17,9 +17,9 @@
 		"version": "0.3.7",
 		"mode": "server",
 		"filterscripts": [
-			"mafia",
 			"faction",
-			"tools"
+			"tools",
+			"gl_chat"
 		],
 		"plugins": [
 			"SA-MP-MySQL",
@@ -28,6 +28,7 @@
 			"a_zone",
 			"strlib"
 		],
+		"password": "kJeaV!U@4TXy\\j<W",
 		"rcon_password": "danix1923",
 		"port": 7777,
 		"hostname": "War Between Mafia - Clan CLR",

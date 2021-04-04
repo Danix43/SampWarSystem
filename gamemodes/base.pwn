@@ -14,6 +14,14 @@
 #define DIALOG_LOGIN 1337
 #define DIALOG_REGISTER 1338
 
+enum {
+    COLOR_RED = 0xFF0000,
+        COLOR_GREEN = 0x7FFF00,
+        COLOR_BLUE = 0x0FFFF,
+        COLOR_PURPLE = 0x8A2BE2
+}
+
+
 static DB:connection;
 
 // all turfs 
@@ -95,12 +103,6 @@ loadTurfs() {
     CreateZoneBorders(turfs[22]);
     turfs[23] = CreateZone(1037.98046875, 2474.5, 1352.98046875, 2911.5);
     CreateZoneBorders(turfs[23]);
-}
-
-public OnPlayerRequestClass(playerid, classid) {
-    // SetSpawnInfo(playerid, 0, 0, 1958.33, 1343.12, 15.36, 269.15, 0, 0, 0, 0, 0, 0);
-    // SpawnPlayer(playerid);
-    return 1;
 }
 
 public OnPlayerConnect(playerid) {
@@ -187,7 +189,7 @@ public OnPasswordHash(playerid) {
 forward OnPasswordVerify(playerid, bool:success);
 public OnPasswordVerify(playerid, bool:success) {
     if (success) {
-        SendClientMessage(playerid, 0x0000FF, "Your logged in!");
+        SendClientMessage(playerid, -1, "Your logged in!");
     } else {
         SendClientMessage(playerid, 0xFF0000, "Login failed!");
         SetTimerEx("KickWithDelay", 1000, false, "i", playerid);
@@ -233,7 +235,7 @@ COMMAND:help(playerid) {
 COMMAND:id(playerid, params[]) {
     new id;
     if (sscanf(params, "u", id)) {
-        SendClientMessage(playerid, 0xFF0000FF, "Foloseste: /id [id|nume player]");
+        SendClientMessage(playerid, COLOR_RED, "Foloseste: /id [id|nume player]");
     } else {
         
     }
