@@ -43,6 +43,9 @@ crashinfo.txt
 # Ban list
 samp.ban
 
+# database
+scriptfiles/data.db
+
 #
 # Common files
 #

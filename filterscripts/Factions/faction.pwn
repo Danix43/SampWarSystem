@@ -142,6 +142,7 @@ putRDT(playerid, rank) {
     SetPlayerColor(playerid, COLOR_RED);
     SpawnPlayer(playerid);
 }
+
 putSP(playerid, rank) {
     switch (rank) {
         case 1:
@@ -355,9 +356,6 @@ COMMAND:invitemember(playerid, params[]) {
             // the giver should have at least rank 6
             new giverRank = getPlayerFactionRank(giverPlayerName);
             if (giverRank < 5) {
-                new message[30];
-                format(message, sizeof(message), "Inviter rank: %d", giverRank);
-                SendClientMessage(playerid, COLOR_RED, message);
                 SendClientMessage(playerid, COLOR_RED, "Nu ai rank-ul suficient de mare pentru a invita un player!");
                 return 1;
             }
@@ -386,6 +384,11 @@ COMMAND:acceptinvite(playerid, params[]) {
 
         new takerName[30];
         GetPlayerName(playerid, takerName, sizeof(takerName));
+
+        // can't join the civilian
+        if (checkIfCivil(giverName)) {
+            return 1;
+        }
 
         // check if the invited player is a civil; check already done in invitemember
         if (checkIfCivil(takerName)) {
