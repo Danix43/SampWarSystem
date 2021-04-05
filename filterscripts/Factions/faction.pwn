@@ -73,15 +73,15 @@ public OnPlayerRequestClass(playerid, classid) {
 
     if (db_num_rows(result)) {
         new playerFaction[20];
-        new playerRank[10];
+        new playerRank;
 
         db_get_field_assoc(result, "player_faction", playerFaction, sizeof(playerFaction));
-        db_get_field_assoc(result, "faction_rank", playerRank, sizeof(playerRank));
+        playerRank = db_get_field_assoc_int(result, "faction_rank");
 
         if (isequal(playerFaction, "RDT")) {
-            putRDT(playerid);
+            putRDT(playerid, playerRank);
         } else if (isequal(playerFaction, "SP")) {
-            putSP(playerid);
+            putSP(playerid, playerRank);
         } else {
             putCivil(playerid);
         }
@@ -119,22 +119,55 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys) {
 
 // ----------------------- CORE ----------------------- 
 
-putRDT(playerid) {
-    SetSpawnInfo(playerid, RDT, 0, -2638.8232, 1407.3395, 906.4609, 269.15, 0, 0, 0, 0, 0, 0);
-    SetPlayerColor(playerid, COLOR_RED);
+putRDT(playerid, rank) {
+    switch (rank) {
+        case 1:
+            SetSpawnInfo(playerid, RDT, 117, -2638.8232, 1407.3395, 906.4609, 269.15, 0, 0, 0, 0, 0, 0);
+        case 2:
+            SetSpawnInfo(playerid, RDT, 118, -2638.8232, 1407.3395, 906.4609, 269.15, 0, 0, 0, 0, 0, 0);
+        case 3:
+            SetSpawnInfo(playerid, RDT, 118, -2638.8232, 1407.3395, 906.4609, 269.15, 0, 0, 0, 0, 0, 0);
+        case 4:
+            SetSpawnInfo(playerid, RDT, 208, -2638.8232, 1407.3395, 906.4609, 269.15, 0, 0, 0, 0, 0, 0);
+        case 5:
+            SetSpawnInfo(playerid, RDT, 208, -2638.8232, 1407.3395, 906.4609, 269.15, 0, 0, 0, 0, 0, 0);
+        case 6:
+            SetSpawnInfo(playerid, RDT, 120, -2638.8232, 1407.3395, 906.4609, 269.15, 0, 0, 0, 0, 0, 0);
+        case 7:
+            SetSpawnInfo(playerid, RDT, 120, -2638.8232, 1407.3395, 906.4609, 269.15, 0, 0, 0, 0, 0, 0);
+        default:
+            SetSpawnInfo(playerid, RDT, 2, -2638.8232, 1407.3395, 906.4609, 269.15, 0, 0, 0, 0, 0, 0);
+    }
     SetPlayerInterior(playerid, 3);
+    SetPlayerColor(playerid, COLOR_RED);
     SpawnPlayer(playerid);
 }
-
-putSP(playerid) {
-    SetSpawnInfo(playerid, SP, 0, 1727.2853, -1642.9451, 20.2254, 269.15, 0, 0, 0, 0, 0, 0);
-    SetPlayerColor(playerid, COLOR_PURPLE);
+putSP(playerid, rank) {
+    switch (rank) {
+        case 1:
+            SetSpawnInfo(playerid, SP, 104, 1727.2853, -1642.9451, 20.2254, 269.15, 0, 0, 0, 0, 0, 0);
+        case 2:
+            SetSpawnInfo(playerid, SP, 102, 1727.2853, -1642.9451, 20.2254, 269.15, 0, 0, 0, 0, 0, 0);
+        case 3:
+            SetSpawnInfo(playerid, SP, 102, 1727.2853, -1642.9451, 20.2254, 269.15, 0, 0, 0, 0, 0, 0);
+        case 4:
+            SetSpawnInfo(playerid, SP, 185, 1727.2853, -1642.9451, 20.2254, 269.15, 0, 0, 0, 0, 0, 0);
+        case 5:
+            SetSpawnInfo(playerid, SP, 185, 1727.2853, -1642.9451, 20.2254, 269.15, 0, 0, 0, 0, 0, 0);
+        case 6:
+            SetSpawnInfo(playerid, SP, 296, 1727.2853, -1642.9451, 20.2254, 269.15, 0, 0, 0, 0, 0, 0);
+        case 7:
+            SetSpawnInfo(playerid, SP, 296, 1727.2853, -1642.9451, 20.2254, 269.15, 0, 0, 0, 0, 0, 0);
+        default:
+            SetSpawnInfo(playerid, SP, 4, 1727.2853, -1642.9451, 20.2254, 269.15, 0, 0, 0, 0, 0, 0);
+    }
     SetPlayerInterior(playerid, 18);
+    SetPlayerColor(playerid, COLOR_PURPLE);
     SpawnPlayer(playerid);
 }
 
 putCivil(playerid) {
-    SetSpawnInfo(playerid, CIVILIAN, 0, 1958.33, 1343.12, 15.36, 269.15, 0, 0, 0, 0, 0, 0);
+    SetSpawnInfo(playerid, CIVILIAN, 24, 1958.33, 1343.12, 15.36, 269.15, 0, 0, 0, 0, 0, 0);
     SetPlayerColor(playerid, -1);
     SpawnPlayer(playerid);
 }
@@ -288,77 +321,94 @@ COMMAND:heal(playerid, params[]) {
     return 1;
 }
 
+new inviteTimer[1000];
+
 // needs testing
 COMMAND:invitemember(playerid, params[]) {
-    new input[2];
-    if (sscanf(params, "ii", input[0], input[1])) {
-        SendClientMessage(playerid, COLOR_RED, "Foloseste: /invitemember <id player> <rank>");
+    new takerId;
+    if (sscanf(params, "i", takerId)) {
+        SendClientMessage(playerid, COLOR_RED, "Foloseste: /invitemember <id player>");
     } else {
-        new invitedPlayerId = input[0];
-        new rank = input[1];
+        // - get names from players
+        new takerPlayerName[30];
+        GetPlayerName(takerId, takerPlayerName, sizeof(takerPlayerName));
 
-        new invitedName[30];
-        GetPlayerName(invitedPlayerId, invitedName, sizeof(invitedName));
+        new giverPlayerName[30];
+        GetPlayerName(playerid, giverPlayerName, sizeof(giverPlayerName));
 
-        new inviterName[30];
-        GetPlayerName(playerid, inviterName, sizeof(inviterName));
-
-        if (checkIfCivil(inviterName)) {
+        // check if the inviter is a civil
+        if (checkIfCivil(giverPlayerName)) {
             SendClientMessage(playerid, COLOR_RED, "Nu poti invita un membru ca civil!");
             return 1;
         }
 
-        new inviterFaction[9];
-        inviterFaction = getPlayerFactionName(inviterName);
-        new invitedPlayerFaction[9];
-        invitedPlayerFaction = getPlayerFactionName(invitedName);
+        // get the faction from the players
+        new giverFaction[9];
+        giverFaction = getPlayerFactionName(giverPlayerName);
+        new takerFaction[9];
+        takerFaction = getPlayerFactionName(takerPlayerName);
 
-        if (!isequal(invitedPlayerFaction, inviterFaction)) {
-            SendClientMessage(playerid, COLOR_RED, "Nu poti sa inviti un jucator din alta mafie!");
+        // check if the taker is a civilian 
+        new civilianFaction[9];
+        civilianFaction = "Civilian";
+        if (isequal(takerFaction, civilianFaction)) {
+            // the giver should have at least rank 6
+            new giverRank = getPlayerFactionRank(giverPlayerName);
+            if (giverRank < 5) {
+                new message[30];
+                format(message, sizeof(message), "Inviter rank: %d", giverRank);
+                SendClientMessage(playerid, COLOR_RED, message);
+                SendClientMessage(playerid, COLOR_RED, "Nu ai rank-ul suficient de mare pentru a invita un player!");
+                return 1;
+            }
+
+            // all conditions met, sending request
+            new message[50];
+            format(message, sizeof(message), "Ai trimis o invitatie catre id: %d", takerId);
+            SendClientMessage(playerid, COLOR_BLUE, message);
+            inviteTimer[playerid] = SetTimerEx("cmd_acceptinvite", 30000, false, "i", playerid);
+            SendClientMessage(takerId, COLOR_BLUE, "Ai 30 de secunde pentru a accepta invitatia de a intra in factiune!");
+            SendClientMessage(takerId, COLOR_BLUE, "Foloseste /acceptinvite <id lider>");
             return 1;
         }
-
-        new inviterRank = getPlayerFactionRank(inviterName);
-
-        if (inviterRank < 5) {
-            printf("Inviter rank: %d", inviterRank);
-            SendClientMessage(playerid, COLOR_RED, "Nu ai rank-ul suficient de mare pentru a invita un player!");
-            return 1;
-        }
-        SetTimerEx("cmd_acceptinvite", 30000, false, "i", playerid);
-        SendClientMessage(input[0], COLOR_BLUE, "Ai 30 de secunde pentru a accepta invitatia de a intra in factiune!");
-        SendClientMessage(input[0], COLOR_BLUE, "Foloseste /acceptinvite <id lider>");
     }
     return 1;
 }
 
+// needs testing 
 COMMAND:acceptinvite(playerid, params[]) {
-    new input[2];
-    if (sscanf(params, "i", input[0])) {
+    new giverId;
+    if (sscanf(params, "i", giverId)) {
         SendClientMessage(playerid, COLOR_RED, "Foloseste: /acceptinvite <id player>");
     } else {
-        new name[30];
-        GetPlayerName(input[0], name, sizeof(name));
+        new giverName[30];
+        GetPlayerName(giverId, giverName, sizeof(giverName));
 
-        if (checkIfCivil(name)) {
+        new takerName[30];
+        GetPlayerName(playerid, takerName, sizeof(takerName));
+
+        // check if the invited player is a civil; check already done in invitemember
+        if (checkIfCivil(takerName)) {
+            // get the inviter player faction
+            new giverFaction[9];
+            giverFaction = getPlayerFactionName(giverName);
+
             new query[150];
-            new playerFaction[5];
-            GetPVarString(playerid, "playerFaction", playerFaction, sizeof(playerFaction));
-
-            print(playerFaction);
-
             format(query, sizeof(query),
-                "UPDATE 'Players' SET player_faction = '%s', faction_rank = '%d' WHERE player_name = '%s'", playerFaction, input[1], name);
+                "UPDATE 'Players' SET player_faction = '%s', faction_rank = 1 WHERE player_name = '%s'", giverFaction, takerName);
+
             if (db_free_result(db_query(connection, query)) >= 1) {
-                print("update done");
-                new message[50];
-                format(message, sizeof(message), "Te-ai alaturat mafiei %s!", playerFaction);
+                new message[60];
+                format(message, sizeof(message), "Te-ai alaturat mafiei %s!", giverFaction);
                 SendClientMessage(playerid, COLOR_GREEN, message);
+                KillTimer(inviteTimer[giverId]);
             } else {
                 print("update failed");
+                KillTimer(inviteTimer[giverId]);
             }
         } else {
             SendClientMessage(playerid, COLOR_RED, "Player-ul este deja intr-o mafie!");
+            KillTimer(inviteTimer[giverId]);
         }
     }
     return 1;
@@ -403,12 +453,12 @@ COMMAND:resignmember(playerid, params[]) {
             SendClientMessage(playerid, COLOR_RED, "Nu poti da afara un rank superior!");
             return 1;
         }
-
-        if (5 < giverRank) {
+        if (5 > giverRank) {
             SendClientMessage(playerid, COLOR_RED, "Nu ai rank-ul suficient pentru a da afara un membru!");
             return 1;
         }
 
+        // - every step checks up: do update
         new query[150];
         format(query, sizeof(query), "UPDATE 'Players' SET player_faction = 'Civilian', faction_rank = '0' WHERE player_name = '%s'", takerPlayerName);
         if (db_free_result(db_query(connection, query)) >= 1) {

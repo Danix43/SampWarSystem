@@ -237,7 +237,7 @@ COMMAND:id(playerid, params[]) {
     if (sscanf(params, "u", id)) {
         SendClientMessage(playerid, COLOR_RED, "Foloseste: /id [id|nume player]");
     } else {
-        
+
     }
     return 1;
 }
