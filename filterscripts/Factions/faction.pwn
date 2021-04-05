@@ -322,9 +322,9 @@ COMMAND:heal(playerid, params[]) {
     return 1;
 }
 
-new inviteTimer[1000];
 
-// needs testing
+new inviteTimer[1000];
+// done testing, may need to update killtimer
 COMMAND:invitemember(playerid, params[]) {
     new takerId;
     if (sscanf(params, "i", takerId)) {
@@ -373,7 +373,7 @@ COMMAND:invitemember(playerid, params[]) {
     return 1;
 }
 
-// needs testing 
+// done testing
 COMMAND:acceptinvite(playerid, params[]) {
     new giverId;
     if (sscanf(params, "i", giverId)) {
@@ -477,10 +477,144 @@ COMMAND:resignmember(playerid, params[]) {
 }
 
 COMMAND:rankup(playerid, params[]) {
+    new takerId;
+    if (sscanf(params, "i", takerId)) {
+        SendClientMessage(playerid, COLOR_RED, "Foloseste: /rankup <id player>");
+    } else {
+        new takerPlayerName[30];
+        GetPlayerName(takerId, takerPlayerName, sizeof(takerPlayerName));
+
+        new giverPlayerName[30];
+        GetPlayerName(playerid, giverPlayerName, sizeof(giverPlayerName));
+
+        // check if the target is a civil
+        if (checkIfCivil(takerPlayerName)) {
+            SendClientMessage(playerid, COLOR_RED, "Nu poti da rank-up unui civil!");
+            return 1;
+        }
+
+        // - check if the giver is a civil
+        if (checkIfCivil(giverPlayerName)) {
+            SendClientMessage(playerid, COLOR_RED, "Nu poti sa dai rank-up unui alt civil!");
+            return 1;
+        }
+
+        // check if the target is the same faction as the giver
+        new giverFaction[9];
+        giverFaction = getPlayerFactionName(giverPlayerName);
+        new takerFaction[9];
+        takerFaction = getPlayerFactionName(takerPlayerName);
+
+        if (!isequal(takerFaction, giverFaction)) {
+            SendClientMessage(playerid, COLOR_RED, "Nu poti da rank-up unui jucator din alta mafie!");
+            return 1;
+        }
+
+        // rank checking
+        new giverRank = getPlayerFactionRank(giverPlayerName);
+        new takerRank = getPlayerFactionRank(takerPlayerName);
+        if (giverRank <= takerRank) {
+            SendClientMessage(playerid, COLOR_RED, "Nu poti da sa dai rank-up un rank superior!");
+            return 1;
+        }
+        if (5 > giverRank) {
+            SendClientMessage(playerid, COLOR_RED, "Nu ai rank-ul suficient pentru a da rank-up unui membru!");
+            return 1;
+        }
+
+        // checking the current rank
+        if (takerRank == 6) {
+            SendClientMessage(playerid, COLOR_RED, "Membrul are deja rank 6, considera de a-l promova la lider.");
+            return 1;
+        }
+        new newPlayerRank = takerRank + 1;
+
+        // - every step checks up: do update
+        new query[150];
+        format(query, sizeof(query), "UPDATE 'Players' SET faction_rank = %d WHERE player_name = '%s'", newPlayerRank, takerPlayerName);
+        if (db_free_result(db_query(connection, query)) >= 1) {
+            print("update done");
+            new messageTaker[100];
+            format(messageTaker, sizeof(messageTaker), "Ai primit rank-up. Nou tau rank este: %d", newPlayerRank);
+            SendClientMessage(takerId, COLOR_BLUE, messageTaker);
+            new messageGiver[100];
+            format(messageGiver, sizeof(messageGiver), "I-ai dat rank-ul: %d lui %s.", newPlayerRank, takerPlayerName);
+            SendClientMessage(takerId, COLOR_BLUE, messageGiver);
+        } else {
+            print("update failed");
+        }
+    }
     return 1;
 }
 
 COMMAND:rankdown(playerid, params[]) {
+    new takerId;
+    if (sscanf(params, "i", takerId)) {
+        SendClientMessage(playerid, COLOR_RED, "Foloseste: /rankdown <id player>");
+    } else {
+        new takerPlayerName[30];
+        GetPlayerName(takerId, takerPlayerName, sizeof(takerPlayerName));
+
+        new giverPlayerName[30];
+        GetPlayerName(playerid, giverPlayerName, sizeof(giverPlayerName));
+
+        // check if the target is a civil
+        if (checkIfCivil(takerPlayerName)) {
+            SendClientMessage(playerid, COLOR_RED, "Nu poti da rank-down unui civil!");
+            return 1;
+        }
+
+        // - check if the giver is a civil
+        if (checkIfCivil(giverPlayerName)) {
+            SendClientMessage(playerid, COLOR_RED, "Nu poti sa dai rank-down unui alt civil!");
+            return 1;
+        }
+
+        // check if the target is the same faction as the giver
+        new giverFaction[9];
+        giverFaction = getPlayerFactionName(giverPlayerName);
+        new takerFaction[9];
+        takerFaction = getPlayerFactionName(takerPlayerName);
+
+        if (!isequal(takerFaction, giverFaction)) {
+            SendClientMessage(playerid, COLOR_RED, "Nu poti da rank-down unui jucator din alta mafie!");
+            return 1;
+        }
+
+        // rank checking
+        new giverRank = getPlayerFactionRank(giverPlayerName);
+        new takerRank = getPlayerFactionRank(takerPlayerName);
+        if (giverRank <= takerRank) {
+            SendClientMessage(playerid, COLOR_RED, "Nu poti da sa dai rank-down un rank superior!");
+            return 1;
+        }
+        if (5 > giverRank) {
+            SendClientMessage(playerid, COLOR_RED, "Nu ai rank-ul suficient pentru a da rank-down unui membru!");
+            return 1;
+        }
+
+        // checking the current rank
+        if (takerRank == 1) {
+            SendClientMessage(playerid, COLOR_RED, "Membrul are deja rank 1, considera de a-l da afara din mafie.");
+            return 1;
+        }
+        new newPlayerRank = takerRank - 1;
+
+        // - every step checks up: do update
+        new query[150];
+        format(query, sizeof(query), "UPDATE 'Players' SET faction_rank = %d WHERE player_name = '%s'", newPlayerRank, takerPlayerName);
+        if (db_free_result(db_query(connection, query)) >= 1) {
+            print("update done");
+            new messageTaker[100];
+            format(messageTaker, sizeof(messageTaker), "Ai primit rank-down. Nou tau rank este: %d", newPlayerRank);
+            SendClientMessage(takerId, COLOR_BLUE, messageTaker);
+            new messageGiver[100];
+            format(messageGiver, sizeof(messageGiver), "I-ai dat rank-ul: %d lui %s.", newPlayerRank, takerPlayerName);
+            SendClientMessage(takerId, COLOR_BLUE, messageGiver);
+        } else {
+            print("update failed");
+        }
+    }
     return 1;
 }
 
