@@ -24,9 +24,6 @@ enum {
 
 static DB:connection;
 
-// all turfs 
-new turfs[25];
-
 main() {
     print("\n----------------------------------");
     print("      War Between Mafia System");

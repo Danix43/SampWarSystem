@@ -34,6 +34,9 @@ enum {
 #define RDT_CAR_COLOR 121
 #define SP_CAR_COLOR 211
 
+// all turfs 
+new turfs[25];
+
 // SP
 new spvehicles[10];
 
