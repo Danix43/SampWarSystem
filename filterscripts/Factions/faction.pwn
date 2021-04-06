@@ -7,7 +7,9 @@
 
 /*
 TODO: - Fix chat colors 
-      - Check all cmds
+    - Add war system 
+    - Add chat for mafias
+    - Fix colors
 */
 
 
@@ -18,10 +20,10 @@ enum {
 }
 
 enum {
-    COLOR_RED = 0xFF0000,
-        COLOR_GREEN = 0x00FF00,
-        COLOR_BLUE = 0x00CCFF,
-        COLOR_PURPLE = 0xFF33FF
+    COLOR_RED = 0xFF0000FF,
+        COLOR_GREEN = 0x00FF00FF,
+        COLOR_BLUE = 0x00CCFFFF,
+        COLOR_PURPLE = 0xFF33FFFF
 }
 
 
@@ -40,10 +42,11 @@ new rdtvehicles[10];
 
 static DB:connection;
 
-
 // ----------------------- GAME CALLBACKS ----------------------- 
 public OnFilterScriptInit() {
     loadDB();
+
+    loadTurfs();
 
     // SP
     addHQSP();
@@ -118,6 +121,60 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys) {
 }
 
 // ----------------------- CORE ----------------------- 
+
+loadTurfs() {
+    turfs[0] = CreateZone(1233.0001831054688, 618.5, 1687.0001831054688, 1082.5);
+    CreateZoneBorders(turfs[0]);
+    turfs[1] = CreateZone(1687.0000457763672, 618.5, 2118.000045776367, 1082.5);
+    CreateZoneBorders(turfs[1]);
+    turfs[2] = CreateZone(2118.0000915527344, 618.5, 2549.0000915527344, 1082.5);
+    CreateZoneBorders(turfs[2]);
+    turfs[3] = CreateZone(2548.0003051757812, 619.5, 2934.0003051757812, 1082.5);
+    CreateZoneBorders(turfs[3]);
+    turfs[4] = CreateZone(2548.0003051757812, 1082.5, 2934.0003051757812, 1545.5);
+    CreateZoneBorders(turfs[4]);
+    turfs[5] = CreateZone(2118.000289916992, 1082.5, 2549.000289916992, 1546.5);
+    CreateZoneBorders(turfs[5]);
+
+    turfs[6] = CreateZone(1688.0002899169922, 1082.5, 2119.000289916992, 1546.5);
+    CreateZoneBorders(turfs[6]);
+    turfs[7] = CreateZone(1257.0001220703125, 1082.5, 1688.0001220703125, 1546.5);
+    CreateZoneBorders(turfs[7]);
+    turfs[8] = CreateZone(826.0001831054688, 1081.5, 1256.0001831054688, 1546.5);
+    CreateZoneBorders(turfs[8]);
+    turfs[9] = CreateZone(1258.0003051757812, 2010.4999694824219, 1689.0003051757812, 2474.499969482422);
+    CreateZoneBorders(turfs[9]);
+    turfs[10] = CreateZone(825.0000610351562, 1546.5, 1256.0000610351562, 2010.5);
+    CreateZoneBorders(turfs[10]);
+    turfs[11] = CreateZone(1256.0001220703125, 1546.5, 1687.0001220703125, 2010.5);
+    CreateZoneBorders(turfs[11]);
+
+    turfs[12] = CreateZone(1687.0003051757812, 1546.5, 2118.0003051757812, 2010.5);
+    CreateZoneBorders(turfs[12]);
+    turfs[13] = CreateZone(2117.0003662109375, 1545.5, 2548.0003662109375, 2009.5);
+    CreateZoneBorders(turfs[13]);
+    turfs[14] = CreateZone(2548.0003662109375, 1545.5, 2979.0003662109375, 2009.5);
+    CreateZoneBorders(turfs[14]);
+    turfs[15] = CreateZone(2548.0003051757812, 2009.5, 2979.0003051757812, 2473.5);
+    CreateZoneBorders(turfs[15]);
+    turfs[16] = CreateZone(2118.0003051757812, 2009.5, 2549.0003051757812, 2473.5);
+    CreateZoneBorders(turfs[16]);
+    turfs[17] = CreateZone(1688.0002899169922, 2010.5, 2119.000289916992, 2474.5);
+    CreateZoneBorders(turfs[17]);
+
+    turfs[18] = CreateZone(826.9999389648438, 2010.4999771118164, 1257.9999389648438, 2474.4999771118164);
+    CreateZoneBorders(turfs[18]);
+    turfs[19] = CreateZone(2548.0003662109375, 2473.5, 2979.0003662109375, 2910.5);
+    CreateZoneBorders(turfs[19]);
+    turfs[20] = CreateZone(2117.0003662109375, 2473.4999809265137, 2548.0003662109375, 2910.4999809265137);
+    CreateZoneBorders(turfs[20]);
+    turfs[21] = CreateZone(1688.0002899169922, 2474.4999809265137, 2119.000289916992, 2911.4999809265137);
+    CreateZoneBorders(turfs[21]);
+    turfs[22] = CreateZone(1350.9921875, 2474.5, 1688.9921875, 2911.5);
+    CreateZoneBorders(turfs[22]);
+    turfs[23] = CreateZone(1037.98046875, 2474.5, 1352.98046875, 2911.5);
+    CreateZoneBorders(turfs[23]);
+}
 
 putRDT(playerid, rank) {
     switch (rank) {
@@ -321,7 +378,6 @@ COMMAND:heal(playerid, params[]) {
     }
     return 1;
 }
-
 
 new inviteTimer[1000];
 // done testing, may need to update killtimer
@@ -614,6 +670,28 @@ COMMAND:rankdown(playerid, params[]) {
         } else {
             print("update failed");
         }
+    }
+    return 1;
+}
+
+/*
+ - attack a turf
+ should be only 4 attacks on a sesh
+*/
+COMMAND:attack(playerid, params[]) {
+    return 1;
+}
+
+// show the upcoming wars
+// display on chat as plain text
+// or inside dialogs 
+COMMAND:upcomingwars(playerid, params[]) {
+    return 1;
+}
+
+COMMAND:turfs(playerid, params[]) {
+    for (new i = 0; i < 23; i++) {
+        ShowZoneForPlayer(playerid, turfs[i], 0xFF000073, 0xFFFFFFAA, 0xFFFFFFAA);
     }
     return 1;
 }
