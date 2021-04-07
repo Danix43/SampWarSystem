@@ -48,7 +48,6 @@ public OnGameModeExit() {
     return 1;
 }
 
-
 public OnPlayerConnect(playerid) {
     new query[100];
 
@@ -72,23 +71,18 @@ public OnPlayerConnect(playerid) {
 createDBs() {
     connection = db_open("data.db");
 
-    if (connection) {
-        print("connected to db");
-    } else {
+    if (connection) {} else {
         print("failed to connect to db");
     }
+    new query[256] = "CREATE TABLE IF NOT EXISTS 'Players' (player_id INTEGER PRIMARY KEY, player_name TEXT NOT NULL UNIQUE, player_password TEXT NOT NULL, player_faction TEXT NOT NULL, faction_rank INTEGER NOT NULL)";
+    db_free_result(db_query(connection, query));
 
-    new query[256] = "CREATE TABLE IF NOT EXISTS 'Players' (player_id INTEGER PRIMARY KEY, player_name TEXT NOT NULL UNIQUE, player_password TEXT NOT NULL, player_faction TEXT NOT NULL, faction_rank TEXT NOT NULL)";
+    query = "CREATE TABLE IF NOT EXISTS 'Turfs' (turf_id INTEGER PRIMARY KEY, turf_name TEXT NOT NULL, turf_number INTEGER NOT NULL, owner TEXT NOT NULL, owner_color TEXT NOT NULL, attacked TEXT NOT NULL DEFAULT 'false', minX REAL, minY REAL, maxX REAL, maxY REAL)";
     db_free_result(db_query(connection, query));
-    print("player database loaded");
-    //                                                                                                                                  Float:gzMinX, Float:gzMinY, Float:gzMaxX, Float:gzMaxY
-    query = "CREATE TABLE IF NOT EXISTS 'Turfs' (turf_id INTEGER PRIMARY KEY, owner TEXT NOT NULL, owner_color TEXT NOT NULL, minX INTEGER, minY INTEGER, maxX INTEGER, maxY INTEGER)";
-    db_free_result(db_query(connection, query));
-    print("turfs database loaded");
 }
 
 loadTurfs() {
-    new query[200];
+    new query[50];
 
     for (new i = 1; i <= 24; i++) {
         format(query, sizeof(query), "SELECT * FROM 'Turfs' WHERE turf_id = %d", i);
@@ -125,6 +119,40 @@ loadTurfs() {
         }
         db_free_result(queryResult);
     }
+}
+
+loadDataForAttack() {
+    new query[50];
+    new returnData[550];
+
+    new headers[33];
+    headers = "Turf Number\tTurf Name\tOwner\n";
+    strcatmid(returnData, headers);
+
+    for (new i = 1; i <= 24; i++) {
+        format(query, sizeof(query), "SELECT turf_name, turf_number, owner FROM 'Turfs' WHERE turf_id = %d", i);
+
+        print("inside for");
+        new DBResult:queryResult = db_query(connection, query);
+        if (db_num_rows(queryResult)) {
+            new turfName[15];
+            new turfNumber;
+            new turfOwner[5];
+
+            db_get_field_assoc(queryResult, "turf_name", turfName, sizeof(turfName));
+            turfNumber = db_get_field_assoc_int(queryResult, "turf_number");
+            db_get_field_assoc(queryResult, "owner", turfOwner, sizeof(turfOwner));
+
+            new temp[50];
+            format(temp, sizeof(temp), "%d\t%s\t%s\n", turfNumber, turfName, turfOwner);
+
+            strcatmid(returnData, temp);
+
+            db_next_row(queryResult);
+        }
+        db_free_result(queryResult);
+    }
+    return returnData;
 }
 
 dialog loginPlayer(playerid, response, listitem, inputtext[]) {
@@ -213,9 +241,7 @@ COMMAND:id(playerid, params[]) {
     new id;
     if (sscanf(params, "u", id)) {
         SendClientMessage(playerid, COLOR_RED, "Foloseste: /id [id|nume player]");
-    } else {
-
-    }
+    } else {}
     return 1;
 }
 
@@ -233,10 +259,25 @@ COMMAND:turfs(playerid, params[]) {
         db_get_field_assoc(result, "owner_color", turfOwnerColor, sizeof(turfOwnerColor));
         new turfOwnerColorInt = strval(turfOwnerColor);
 
-        ShowZoneForPlayer(playerid, turfs[turfId], 0xFF000073, 0xFFFFFFAA, 0xFFFFFFAA);
+        ShowZoneForPlayer(playerid, turfs[turfId], turfOwnerColorInt, 0xFFFFFFAA, 0xFFFFFFAA);
 
         db_next_row(result);
     }
     db_free_result(result);
+    return 1;
+}
+
+/*
+ - attack a turf
+ should be only 4 attacks on a sesh
+*/
+COMMAND:attack(playerid, params[]) {
+    new turfData[550];
+    turfData = loadDataForAttack();
+
+    OpenDialog(playerid, "attack", DIALOG_STYLE_TABLIST_HEADERS,
+        "Attack Menu",
+        turfData,
+        "Attack", "");
     return 1;
 }

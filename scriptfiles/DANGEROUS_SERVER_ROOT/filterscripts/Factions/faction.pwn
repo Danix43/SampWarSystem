@@ -624,13 +624,13 @@ COMMAND:rankdown(playerid, params[]) {
     return 1;
 }
 
-/*
- - attack a turf
- should be only 4 attacks on a sesh
-*/
-COMMAND:attack(playerid, params[]) {
-    return 1;
-}
+// /*
+//  - attack a turf
+//  should be only 4 attacks on a sesh
+// */
+// COMMAND:attack(playerid, params[]) {
+//     return 1;
+// }
 
 // show the upcoming wars
 // display on chat as plain text

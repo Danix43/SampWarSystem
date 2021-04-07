@@ -22,7 +22,6 @@
 			"gl_chat"
 		],
 		"plugins": [
-			"SA-MP-MySQL",
 			"sscanf",
 			"izcmd",
 			"a_zone",
