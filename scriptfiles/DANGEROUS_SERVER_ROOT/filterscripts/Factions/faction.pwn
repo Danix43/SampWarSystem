@@ -379,7 +379,6 @@ COMMAND:invitemember(playerid, params[]) {
     return 1;
 }
 
-// done testing
 COMMAND:acceptinvite(playerid, params[]) {
     new giverId;
     if (sscanf(params, "i", giverId)) {
@@ -423,7 +422,6 @@ COMMAND:acceptinvite(playerid, params[]) {
     return 1;
 }
 
-// done testing
 COMMAND:resignmember(playerid, params[]) {
     new takerPlayerId;
     if (sscanf(params, "i", takerPlayerId)) {
@@ -624,53 +622,12 @@ COMMAND:rankdown(playerid, params[]) {
     return 1;
 }
 
-// /*
-//  - attack a turf
-//  should be only 4 attacks on a sesh
-// */
-// COMMAND:attack(playerid, params[]) {
-//     return 1;
-// }
-
 // show the upcoming wars
 // display on chat as plain text
 // or inside dialogs 
 COMMAND:upcomingwars(playerid, params[]) {
     return 1;
 }
-
-// COMMAND:turfs(playerid, params[]) {
-//     new query[150];
-
-//     format(query, sizeof(query), "SELECT turf_id, owner_color FROM 'Turfs'");
-
-//     SendClientMessage(playerid, 0xFFFFFFAA, query);
-//     new DBResult:result = db_query(connection, query);
-//     if (db_num_rows(result)) {
-//         new turfId;
-//         new turfOwnerColor[11];
-
-//         turfId = db_get_field_assoc_int(result, "turf_id");
-//         db_get_field_assoc(result, "owner_color", turfOwnerColor, sizeof(turfOwnerColor));
-//         new turfOwnerColorInt = strval(turfOwnerColor);
-
-//         new message[50];
-//         format(message, sizeof(message), "Inside if, turf data: id: %d, color: %d");
-//         SendClientMessage(playerid, 0xFFFFFFAA, message);
-
-//         ShowZoneForPlayer(playerid, turfs[turfId], 0xFF000073, 0xFFFFFFAA, 0xFFFFFFAA);
-
-//         SendClientMessage(playerid, 0xFFFFFFAA, "Turf should be created");
-
-//         // for (new i = 0; i < 24; i++) {
-//         //     ShowZoneForPlayer(playerid, turfs[i], 0xFF000073, 0xFFFFFFAA, 0xFFFFFFAA);
-//         // }
-//     } else {
-//         SendClientMessage(playerid, 0xFFFFFFAA, "No turf data loaded");
-//     }
-//     db_free_result(result);
-//     return 1;
-// }
 
 // order ranks 
 // rank 1:
