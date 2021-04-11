@@ -50,7 +50,6 @@ static DB:connection;
 public OnFilterScriptInit() {
     loadDB();
 
-    // loadTurfs();
 
     // SP
     addHQSP();

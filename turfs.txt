@@ -22,3 +22,6 @@
 "3", 1713.984375, 637.0078125, 2112.984375, 1075.0078125
 "2", 2111.9765625, 639.0078125, 2506.9765625, 1075.0078125
 "1", 2506.9765625, 656.0078125, 2913.9765625, 1075.0078125
+
+INSERT INTO Turfs (turf_id, turf_name, turf_number, owner, attacked, minX, minY, maxX, maxY, poiX, poiY, poiZ) VALUES 
+(24, 'Bratva I LV', 24, 'RDT', 'false', 1100, 2434, 1482, 2886, 0, 0, 0);
