@@ -804,31 +804,24 @@ COMMAND:invitemember(playerid, params[]) {
     if (sscanf(params, "i", takerId)) {
         SendClientMessage(playerid, COLOR_RED, "Foloseste: /invitemember <id player>");
     } else {
-        // - get names from players
-        new takerPlayerName[30];
-        GetPlayerName(takerId, takerPlayerName, sizeof(takerPlayerName));
-
-        new giverPlayerName[30];
-        GetPlayerName(playerid, giverPlayerName, sizeof(giverPlayerName));
-
         // check if the inviter is a civil
-        if (checkIfCivil(giverPlayerName)) {
+        if (checkIfCivil(playerid)) {
             SendClientMessage(playerid, COLOR_RED, "Nu poti invita un membru ca civil!");
             return 1;
         }
 
         // get the faction from the players
         new giverFaction[9];
-        giverFaction = getPlayerFactionName(giverPlayerName);
+        giverFaction = getPlayerFactionName(playerid);
         new takerFaction[9];
-        takerFaction = getPlayerFactionName(takerPlayerName);
+        takerFaction = getPlayerFactionName(takerId);
 
         // check if the taker is a civilian 
         new civilianFaction[9];
         civilianFaction = "Civilian";
         if (isequal(takerFaction, civilianFaction)) {
             // the giver should have at least rank 6
-            new giverRank = getPlayerFactionRank(giverPlayerName);
+            new giverRank = getPlayerFactionRank(playerid);
             if (giverRank < 5) {
                 SendClientMessage(playerid, COLOR_RED, "Nu ai rank-ul suficient de mare pentru a invita un player!");
                 return 1;
@@ -852,22 +845,19 @@ COMMAND:acceptinvite(playerid, params[]) {
     if (sscanf(params, "i", giverId)) {
         SendClientMessage(playerid, COLOR_RED, "Foloseste: /acceptinvite <id player>");
     } else {
-        new giverName[30];
-        GetPlayerName(giverId, giverName, sizeof(giverName));
-
         new takerName[30];
         GetPlayerName(playerid, takerName, sizeof(takerName));
 
         // can't join the civilian
-        if (checkIfCivil(giverName)) {
+        if (checkIfCivil(giverId)) {
             return 1;
         }
 
         // check if the invited player is a civil; check already done in invitemember
-        if (checkIfCivil(takerName)) {
+        if (checkIfCivil(playerid)) {
             // get the inviter player faction
             new giverFaction[9];
-            giverFaction = getPlayerFactionName(giverName);
+            giverFaction = getPlayerFactionName(giverId);
 
             new query[150];
             format(query, sizeof(query),
@@ -900,20 +890,17 @@ COMMAND:resignmember(playerid, params[]) {
         new takerPlayerName[30];
         GetPlayerName(takerPlayerId, takerPlayerName, sizeof(takerPlayerName));
 
-        new giverPlayerName[30];
-        GetPlayerName(playerid, giverPlayerName, sizeof(giverPlayerName));
-
         // - check if the giver is a civil
-        if (checkIfCivil(giverPlayerName)) {
+        if (checkIfCivil(playerid)) {
             SendClientMessage(playerid, COLOR_RED, "Nu poti sa dai afara un alt civil!");
             return 1;
         }
 
         // - faction checking
         new giverFaction[9];
-        giverFaction = getPlayerFactionName(giverPlayerName);
+        giverFaction = getPlayerFactionName(playerid);
         new takerFaction[9];
-        takerFaction = getPlayerFactionName(takerPlayerName);
+        takerFaction = getPlayerFactionName(takerPlayerId);
 
         if (!isequal(takerFaction, giverFaction)) {
             SendClientMessage(playerid, COLOR_RED, "Nu poti da afara un jucator din alta mafie!");
@@ -922,8 +909,8 @@ COMMAND:resignmember(playerid, params[]) {
 
         // - rank checking: an inferior can not resign a superior
         // - rank checking: the giver needs to have at least rank 6
-        new giverRank = getPlayerFactionRank(giverPlayerName);
-        new takerRank = getPlayerFactionRank(takerPlayerName);
+        new giverRank = getPlayerFactionRank(playerid);
+        new takerRank = getPlayerFactionRank(takerPlayerId);
         if (giverRank <= takerRank) {
             SendClientMessage(playerid, COLOR_RED, "Nu poti da afara un rank superior!");
             return 1;
@@ -956,26 +943,23 @@ COMMAND:rankup(playerid, params[]) {
         new takerPlayerName[30];
         GetPlayerName(takerId, takerPlayerName, sizeof(takerPlayerName));
 
-        new giverPlayerName[30];
-        GetPlayerName(playerid, giverPlayerName, sizeof(giverPlayerName));
-
         // check if the target is a civil
-        if (checkIfCivil(takerPlayerName)) {
+        if (checkIfCivil(takerId)) {
             SendClientMessage(playerid, COLOR_RED, "Nu poti da rank-up unui civil!");
             return 1;
         }
 
         // - check if the giver is a civil
-        if (checkIfCivil(giverPlayerName)) {
+        if (checkIfCivil(playerid)) {
             SendClientMessage(playerid, COLOR_RED, "Nu poti sa dai rank-up unui alt civil!");
             return 1;
         }
 
         // check if the target is the same faction as the giver
         new giverFaction[9];
-        giverFaction = getPlayerFactionName(giverPlayerName);
+        giverFaction = getPlayerFactionName(playerid);
         new takerFaction[9];
-        takerFaction = getPlayerFactionName(takerPlayerName);
+        takerFaction = getPlayerFactionName(takerId);
 
         if (!isequal(takerFaction, giverFaction)) {
             SendClientMessage(playerid, COLOR_RED, "Nu poti da rank-up unui jucator din alta mafie!");
@@ -983,8 +967,8 @@ COMMAND:rankup(playerid, params[]) {
         }
 
         // rank checking
-        new giverRank = getPlayerFactionRank(giverPlayerName);
-        new takerRank = getPlayerFactionRank(takerPlayerName);
+        new giverRank = getPlayerFactionRank(playerid);
+        new takerRank = getPlayerFactionRank(takerId);
         if (giverRank <= takerRank) {
             SendClientMessage(playerid, COLOR_RED, "Nu poti da sa dai rank-up un rank superior!");
             return 1;
@@ -1027,26 +1011,23 @@ COMMAND:rankdown(playerid, params[]) {
         new takerPlayerName[30];
         GetPlayerName(takerId, takerPlayerName, sizeof(takerPlayerName));
 
-        new giverPlayerName[30];
-        GetPlayerName(playerid, giverPlayerName, sizeof(giverPlayerName));
-
         // check if the target is a civil
-        if (checkIfCivil(takerPlayerName)) {
+        if (checkIfCivil(takerId)) {
             SendClientMessage(playerid, COLOR_RED, "Nu poti da rank-down unui civil!");
             return 1;
         }
 
         // - check if the giver is a civil
-        if (checkIfCivil(giverPlayerName)) {
+        if (checkIfCivil(playerid)) {
             SendClientMessage(playerid, COLOR_RED, "Nu poti sa dai rank-down unui alt civil!");
             return 1;
         }
 
         // check if the target is the same faction as the giver
         new giverFaction[9];
-        giverFaction = getPlayerFactionName(giverPlayerName);
+        giverFaction = getPlayerFactionName(playerid);
         new takerFaction[9];
-        takerFaction = getPlayerFactionName(takerPlayerName);
+        takerFaction = getPlayerFactionName(takerId);
 
         if (!isequal(takerFaction, giverFaction)) {
             SendClientMessage(playerid, COLOR_RED, "Nu poti da rank-down unui jucator din alta mafie!");
@@ -1054,8 +1035,8 @@ COMMAND:rankdown(playerid, params[]) {
         }
 
         // rank checking
-        new giverRank = getPlayerFactionRank(giverPlayerName);
-        new takerRank = getPlayerFactionRank(takerPlayerName);
+        new giverRank = getPlayerFactionRank(playerid);
+        new takerRank = getPlayerFactionRank(takerId);
         if (giverRank <= takerRank) {
             SendClientMessage(playerid, COLOR_RED, "Nu poti da sa dai rank-down un rank superior!");
             return 1;
