@@ -24,10 +24,10 @@
 #define SP_CAR_COLOR 211
 
 enum {
-    COLOR_RED = 0xFF0000,
-        COLOR_GREEN = 0x7FFF00,
-        COLOR_BLUE = 0x0FFFF,
-        COLOR_PURPLE = 0x8A2BE2
+    COLOR_RED = 0xFF0000FF,
+        COLOR_GREEN = 0x7FFF00FF,
+        COLOR_BLUE = 0x0FFFFFF,
+        COLOR_PURPLE = 0x8A2BE2FF
 }
 
 enum {
@@ -45,6 +45,20 @@ enum Player {
         worths
 }
 
+new players[MAX_PLAYERS][Player];
+new playerWarKills[MAX_PLAYERS];
+new playerWarDeaths[MAX_PLAYERS];
+
+
+// text draws
+new PlayerText:warTurfNumber[MAX_PLAYERS];
+new PlayerText:statsBox[MAX_PLAYERS];
+new PlayerText:warRoundScore[MAX_PLAYERS];
+new PlayerText:warRounds[MAX_PLAYERS];
+new PlayerText:warCurrentPoints[MAX_PLAYERS];
+new PlayerText:warPlayersOnTurf[MAX_PLAYERS];
+new PlayerText:warPlayerStats[MAX_PLAYERS];
+
 // SP
 new spVehiclesVw1[10];
 new spVehiclesVw2[10];
@@ -53,8 +67,13 @@ new spVehiclesVw2[10];
 new rdtVehiclesVw1[10];
 new rdtVehiclesVw2[10];
 
+enum Turf {
+    turfId,
+    owner
+}
+
 // all turfs 
-new turfs[24];
+new turfs[25][Turf];
 
 static DB:connection;
 
@@ -69,11 +88,11 @@ public OnGameModeInit() {
     SetGameModeText("War Between Mafia System");
     UsePlayerPedAnims();
     DisableInteriorEnterExits();
-    createDBs();
-    loadTurfs();
-
     setupRDT();
     setupSP();
+
+    createDBs();
+    loadTurfs();
     return 1;
 }
 
@@ -85,6 +104,13 @@ public OnGameModeExit() {
 }
 
 public OnPlayerConnect(playerid) {
+    createPlayerNameTextDraw(playerid);
+
+    playerWarKills[playerid] = 0;
+    playerWarDeaths[playerid] = 0;
+    SetPVarInt(playerid, "areTurfsDisplayed", 0);
+
+
     new query[100];
 
     new name[30];
@@ -106,13 +132,18 @@ public OnPlayerDeath(playerid, killerid, reason) {
     SendDeathMessage(killerid, playerid, reason);
 
     if (killerid != INVALID_PLAYER_ID) {
-        new playerKills = GetPVarInt(killerid, "kills");
-        SetPVarInt(killerid, "kills", playerKills++);
         pointFromKill(playerid, killerid);
+        playerWarKills[killerid]++;
     }
 
-    new playerDeaths = GetPVarInt(playerid, "deaths");
-    SetPVarInt(playerid, "deaths", playerDeaths++);
+    playerWarDeaths[playerid]++;
+
+    new warPlayerStatsText[25];
+    format(warPlayerStatsText, sizeof(warPlayerStatsText), "Ucideri: %d Morti: %d", playerWarKills[playerid], playerWarDeaths[playerid]);
+    PlayerTextDrawSetString(playerid, warPlayerStats[playerid], warPlayerStatsText);
+
+    format(warPlayerStatsText, sizeof(warPlayerStatsText), "Ucideri: %d Morti: %d", playerWarKills[killerid], playerWarDeaths[killerid]);
+    PlayerTextDrawSetString(killerid, warPlayerStats[killerid], warPlayerStatsText);
 
     return 1;
 }
@@ -158,6 +189,7 @@ public OnPlayerSpawn(playerid) {
     return 1;
 }
 
+// needs fixing
 public OnPlayerKeyStateChange(playerid, newkeys, oldkeys) {
     if ((newkeys & KEY_SECONDARY_ATTACK) && !(oldkeys & KEY_SECONDARY_ATTACK)) {
         if (GetPlayerInterior(playerid) == 0) {
@@ -183,6 +215,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys) {
             SetPlayerPos(playerid, 2633.78174, 1825.46545, 11.02340);
         }
     }
+    return 1;
 }
 
 // ----------------------- SETUPS ----------------------- 
@@ -201,7 +234,7 @@ setupRDT() {
     rdtVehiclesVw1[6] = AddStaticVehicle(522, 2591.3049, 1837.1725, 10.4036, 89.3817, RDT_CAR_COLOR, RDT_CAR_COLOR); // nrgrdt
     rdtVehiclesVw1[7] = AddStaticVehicle(579, 2595.3154, 1823.3834, 10.6317, 91.7420, RDT_CAR_COLOR, RDT_CAR_COLOR); // huntleyrdt
 
-    // vehicles virtual world 2
+    // // vehicles virtual world 2
     rdtVehiclesVw2[0] = AddStaticVehicle(409, 2619.5093, 1823.1813, 10.6203, 0.4462, RDT_CAR_COLOR, RDT_CAR_COLOR); // limordt
     rdtVehiclesVw2[1] = AddStaticVehicle(411, 2619.4358, 1831.5000, 10.5474, 359.7305, RDT_CAR_COLOR, RDT_CAR_COLOR); // infrdt
     rdtVehiclesVw2[3] = AddStaticVehicle(522, 2591.7991, 1811.8635, 10.3947, 91.3857, RDT_CAR_COLOR, RDT_CAR_COLOR); // nrgrdt
@@ -210,6 +243,15 @@ setupRDT() {
     rdtVehiclesVw2[5] = AddStaticVehicle(522, 2591.2476, 1833.6570, 10.4048, 89.9670, RDT_CAR_COLOR, RDT_CAR_COLOR); // nrgrdt
     rdtVehiclesVw2[6] = AddStaticVehicle(522, 2591.3049, 1837.1725, 10.4036, 89.3817, RDT_CAR_COLOR, RDT_CAR_COLOR); // nrgrdt
     rdtVehiclesVw2[7] = AddStaticVehicle(579, 2595.3154, 1823.3834, 10.6317, 91.7420, RDT_CAR_COLOR, RDT_CAR_COLOR); // huntleyrdt
+
+    SetVehicleVirtualWorld(rdtVehiclesVw2[0], 2);
+    SetVehicleVirtualWorld(rdtVehiclesVw2[1], 2);
+    SetVehicleVirtualWorld(rdtVehiclesVw2[2], 2);
+    SetVehicleVirtualWorld(rdtVehiclesVw2[3], 2);
+    SetVehicleVirtualWorld(rdtVehiclesVw2[4], 2);
+    SetVehicleVirtualWorld(rdtVehiclesVw2[5], 2);
+    SetVehicleVirtualWorld(rdtVehiclesVw2[6], 2);
+    SetVehicleVirtualWorld(rdtVehiclesVw2[7], 2);
 }
 
 setupSP() {
@@ -235,12 +277,21 @@ setupSP() {
     spVehiclesVw2[5] = AddStaticVehicle(411, 1445.6853, 743.2895, 10.5474, 90.9583, SP_CAR_COLOR, SP_CAR_COLOR); // infsp
     spVehiclesVw2[6] = AddStaticVehicle(409, 1446.6243, 751.2015, 10.6203, 359.1673, SP_CAR_COLOR, SP_CAR_COLOR); // limosp
     spVehiclesVw2[7] = AddStaticVehicle(579, 1413.0048, 752.7371, 10.6317, 269.8256, SP_CAR_COLOR, SP_CAR_COLOR); // huntleysp
+
+    SetVehicleVirtualWorld(spVehiclesVw2[0], 2);
+    SetVehicleVirtualWorld(spVehiclesVw2[1], 2);
+    SetVehicleVirtualWorld(spVehiclesVw2[2], 2);
+    SetVehicleVirtualWorld(spVehiclesVw2[3], 2);
+    SetVehicleVirtualWorld(spVehiclesVw2[4], 2);
+    SetVehicleVirtualWorld(spVehiclesVw2[5], 2);
+    SetVehicleVirtualWorld(spVehiclesVw2[6], 2);
+    SetVehicleVirtualWorld(spVehiclesVw2[7], 2);
 }
 
 // ----------------------- CORE ----------------------- 
 
-putRDT(playerid, rank) {
-    switch (rank) {
+putRDT(playerid, playerRank) {
+    switch (playerRank) {
         case 1:
             SetSpawnInfo(playerid, RDT, 117, -2638.8232, 1407.3395, 906.4609, 269.15, 0, 0, 0, 0, 0, 0);
         case 2:
@@ -263,8 +314,8 @@ putRDT(playerid, rank) {
     SpawnPlayer(playerid);
 }
 
-putSP(playerid, rank) {
-    switch (rank) {
+putSP(playerid, playerRank) {
+    switch (playerRank) {
         case 1:
             SetSpawnInfo(playerid, SP, 104, 1727.2853, -1642.9451, 20.2254, 269.15, 0, 0, 0, 0, 0, 0);
         case 2:
@@ -301,7 +352,7 @@ checkIfCivil(playerid) {
 }
 
 getPlayerFactionName(playerid) {
-    new factionName[4];
+    new factionName[9];
     switch (GetPlayerTeam(playerid)) {
         case RDT:  {
             factionName = "RDT";
@@ -316,6 +367,8 @@ getPlayerFactionName(playerid) {
             return factionName;
         }
     }
+    factionName = "CIVILIAN";
+    return factionName;
 }
 
 getPlayerFactionRank(playerid) {
@@ -338,53 +391,90 @@ getPlayerFactionRank(playerid) {
     }
 }
 
+getPlayerOpposedFaction(playerid) {
+    new factionName[9];
+    switch (GetPlayerTeam(playerid)) {
+        case RDT:  {
+            factionName = "SP";
+            return factionName;
+        }
+        case SP:  {
+            factionName = "RDT";
+            return factionName;
+        }
+        case CIVILIAN:  {
+            factionName = "CIVILIAN";
+            return factionName;
+        }
+    }
+    factionName = "CIVILIAN";
+    return factionName;
+}
+
 // ----------------------- DB RELATED ----------------------- 
 
 createDBs() {
     connection = db_open("data.db");
 
-    if (connection) {} else {
+    if (connection) {
+        new query[386] = "CREATE TABLE IF NOT EXISTS 'Players' (player_id INTEGER PRIMARY KEY, player_name TEXT NOT NULL UNIQUE, player_password TEXT NOT NULL, player_faction TEXT NOT NULL, faction_rank INTEGER NOT NULL, player_kills INTEGER, player_deaths INTEGER, player_bests INTEGER, player_worths INTEGER)";
+        db_free_result(db_query(connection, query));
+
+        query = "CREATE TABLE IF NOT EXISTS 'Turfs' (turf_id INTEGER PRIMARY KEY, turf_name TEXT NOT NULL, turf_number INTEGER NOT NULL, owner TEXT NOT NULL, attacked TEXT NOT NULL DEFAULT 'false', minX REAL, minY REAL, maxX REAL, maxY REAL, poiX REAL, poiY REAL, poiZ REAL)";
+        db_free_result(db_query(connection, query));
+
+        query = "CREATE TABLE IF NOT EXISTS 'Wars' (war_id INTEGER PRIMARY KEY, turf_id INTEGER NOT NULL, defender TEXT NOT NULL, attacker TEXT NOT NULL, count INTEGER, FOREIGN KEY (turf_id) REFERENCES Turfs (turf_id))";
+        db_free_result(db_query(connection, query));
+    } else {
         print("failed to connect to db");
     }
-
-    new query[386] = "CREATE TABLE IF NOT EXISTS 'Players' (player_id INTEGER PRIMARY KEY, player_name TEXT NOT NULL UNIQUE, player_password TEXT NOT NULL, player_faction TEXT NOT NULL, faction_rank INTEGER NOT NULL, player_kills INTEGER, player_deaths INTEGER, player_bests INTEGER, player_worths INTEGER)";
-    db_free_result(db_query(connection, query));
-
-    query = "CREATE TABLE IF NOT EXISTS 'Turfs' (turf_id INTEGER PRIMARY KEY, turf_name TEXT NOT NULL, turf_number INTEGER NOT NULL, owner TEXT NOT NULL, attacked TEXT NOT NULL DEFAULT 'false', minX REAL, minY REAL, maxX REAL, maxY REAL, poiX REAL, poiY REAL, poiZ REAL)";
-    db_free_result(db_query(connection, query));
-
-    query = "CREATE TABLE IF NOT EXISTS 'Wars' (war_id INTEGER PRIMARY KEY, turf_id INTEGER NOT NULL, defender TEXT NOT NULL, attacker TEXT NOT NULL, count INTEGER, FOREIGN KEY (turf_id) REFERENCES Turfs (turf_id))";
-    db_free_result(db_query(connection, query));
 }
 
 loadTurfs() {
-    new query[50];
+    new query[100];
 
-    for (new i = 0; i <= 24; i++) {
-        format(query, sizeof(query), "SELECT turf_number, minX, minY, maxX, maxY FROM 'Turfs' WHERE turf_id = %d", i);
+    format(query, sizeof(query), "SELECT turf_number, owner, minX, minY, maxX, maxY FROM Turfs;");
 
-        new DBResult:queryResult = db_query(connection, query);
-        if (db_num_rows(queryResult)) {
+    new DBResult:queryResult = db_query(connection, query);
+
+    if (queryResult) {
+        new rdtName[4], spName[4];
+        rdtName = "RDT";
+        spName = "SP";
+
+        for (new i = 1; i <= 24; i++) {
             new turfNumber;
+            new turfOwner[4];
             new Float:turfMinX;
             new Float:turfMinY;
             new Float:turfMaxX;
             new Float:turfMaxY;
 
-            turfNumber = db_get_field_assoc_int(queryResult, "turf_number");
             turfMinX = Float:db_get_field_assoc_float(queryResult, "minX");
             turfMinY = Float:db_get_field_assoc_float(queryResult, "minY");
             turfMaxX = Float:db_get_field_assoc_float(queryResult, "maxX");
             turfMaxY = Float:db_get_field_assoc_float(queryResult, "maxY");
+            db_get_field_assoc(queryResult, "owner", turfOwner, sizeof(turfOwner));
 
-            turfs[turfNumber] = CreateZone(turfMinX, turfMinY, turfMaxX, turfMaxY);
-            CreateZoneBorders(turfs[turfNumber]);
-            CreateZoneNumber(turfs[turfNumber], turfNumber, 0.7);
+            turfs[i][turfNumber] = db_get_field_assoc_int(queryResult, "turf_number");
+            if (isequal(turfOwner, rdtName)) {
+                turfs[i][owner] = RDT;
+            } else if (isequal(turfOwner, spName)) {
+                turfs[i][owner] = SP;
+            } else {
+                print("no match found");
+            }
+
+            turfs[i][turfId] = CreateZone(turfMinX, turfMinY, turfMaxX, turfMaxY);
+            CreateZoneBorders(turfs[i][turfId]);
+            CreateZoneNumber(turfs[i][turfId], turfs[i][turfId], 0.7);
 
             db_next_row(queryResult);
         }
-        db_free_result(queryResult);
+    } else {
+        print("No turf data loaded");
     }
+    db_free_result(queryResult);
 }
 
 loadDataForAttack() {
@@ -411,15 +501,15 @@ loadDataForAttack() {
             }
 
             new turfName[15];
-            new turfNumber;
+            new dbTurfNumber;
             new turfOwner[5];
 
             db_get_field_assoc(queryResult, "turf_name", turfName, sizeof(turfName));
-            turfNumber = db_get_field_assoc_int(queryResult, "turf_number");
+            dbTurfNumber = db_get_field_assoc_int(queryResult, "turf_number");
             db_get_field_assoc(queryResult, "owner", turfOwner, sizeof(turfOwner));
 
             new temp[60];
-            format(temp, sizeof(temp), "%d\t%s\t%s\n", turfNumber, turfName, turfOwner);
+            format(temp, sizeof(temp), "%d\t%s\t%s\n", dbTurfNumber, turfName, turfOwner);
 
             strcatmid(returnData, temp);
 
@@ -463,10 +553,21 @@ dialog attack(playerid, response, listitem, inputtext[]) {
         return;
     }
 
-    new message[100];
-    format(message, sizeof(message), "Input: response: %d, listitem: %d, inputtext: %s", response, listitem, inputtext);
+    new warStatus[5], trueText[5];
+    GetSVarString("isWarOn", warStatus, sizeof(warStatus));
+    trueText = "true";
 
-    SendClientMessage(playerid, 0xFFFFFFFF, message);
+    if (isequal(warStatus, trueText)) {
+        SendClientMessage(playerid, COLOR_RED, "Un war este deja in desfasurare");
+        return;
+    }
+
+    // if (GetSVarInt("warCount") == 4) {
+    //     SendClientMessage(playerid, COLOR_RED, "Sunt deja programate 4 war-uri");
+    //     return;
+    // }
+
+    startWar(inputtext, playerid);
 }
 
 forward OnPasswordHash(playerid);
@@ -510,55 +611,205 @@ preparePlayersForWar() {
     SendClientMessageToAll(COLOR_PURPLE, "Toti mafiotii vor fi respawnati la HQ-uri in cateva secunde");
     new j = GetPlayerPoolSize();
     for (new i = 0; i <= j; i++) {
-        if (IsPlayerConnected(i)) {
-            new playerName[30];
-            GetPlayerName(i, playerName, sizeof(playerName));
-
-            if (!checkIfCivil(playerName)) {
-                SpawnPlayer(i);
-                SetPlayerVirtualWorld(i, 2);
-
-                SendClientMessage(i, COLOR_PURPLE, "Ai fost respawnat la HQ deoarece va incepe war-ul");
-                displayWarTextDraw(i);
-            }
+        if (!checkIfCivil(i)) {
+            SpawnPlayer(i);
+            SetPlayerVirtualWorld(i, 2);
+            displayWarTextDraw(i);
+            SendClientMessage(i, COLOR_PURPLE, "Ai fost respawnat la HQ deoarece va incepe war-ul");
         }
     }
+    return 1;
 }
 
 prepareTurf(turfIdForWar) {
     new query[150];
-    format(query, sizeof(query), "SELECT turf_number FROM Turfs WHERE turf_id = %d", turfIdForWar);
+    format(query, sizeof(query), "SELECT turf_number, poiX, poiY, poiZ FROM Turfs WHERE turf_id = %d", turfIdForWar);
 
     new DBResult:result = db_query(connection, query);
 
     if (db_num_rows(result)) {
-        new turfNumber;
-        turfNumber = db_get_field_assoc_int(result, "turf_number");
-        GangZoneFlashForAll(turfs[turfNumber], 0xFFFFFFAA);
+        new dbTurfNumber;
+
+        dbTurfNumber = db_get_field_assoc_int(result, "turf_number");
+
+        SetSVarFloat("poiX", db_get_field_assoc_float(result, "poiX"));
+        SetSVarFloat("poiY", db_get_field_assoc_float(result, "poiY"));
+        SetSVarFloat("poiZ", db_get_field_assoc_float(result, "poiZ"));
+
+        ZoneFlashForAll(turfs[dbTurfNumber][turfId], 0x00FF00FF);
     }
     db_free_result(result);
 }
 
-displayWarTextDraw(playerid) {
+createPlayerNameTextDraw(playerid) {
+    new PlayerText:playerName[MAX_PLAYERS];
 
+    new playerStringName[30];
+    GetPlayerName(playerid, playerStringName, sizeof(playerStringName));
+
+    // playername
+    playerName[playerid] = CreatePlayerTextDraw(playerid, 90.000000, 428.000000, playerStringName);
+    PlayerTextDrawFont(playerid, playerName[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, playerName[playerid], 0.600000, 2.000000);
+    PlayerTextDrawTextSize(playerid, playerName[playerid], 141.000000, 17.000000);
+    PlayerTextDrawSetOutline(playerid, playerName[playerid], 1);
+    PlayerTextDrawSetShadow(playerid, playerName[playerid], 0);
+    PlayerTextDrawAlignment(playerid, playerName[playerid], 2);
+    PlayerTextDrawColor(playerid, playerName[playerid], 16711935);
+    PlayerTextDrawBackgroundColor(playerid, playerName[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, playerName[playerid], 50);
+    PlayerTextDrawUseBox(playerid, playerName[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, playerName[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, playerName[playerid], 0);
+
+    PlayerTextDrawShow(playerid, playerName[playerid]);
 }
 
-getPlayersOnTurf(playerMafia[], poiX, poiY, poiZ) {
-    new players;
+displayWarTextDraw(playerid) {
+    new statsBoxText[2];
+    format(statsBoxText, sizeof(statsBoxText), "_");
+
+    new turfNameText[20];
+    new turfNr;
+    turfNr = GetSVarInt("warTurf");
+    format(turfNameText, sizeof(turfNameText), "Turf Number: %d", turfNr);
+
+    new warMafiaRounds[50];
+    format(warMafiaRounds, sizeof(warMafiaRounds), "Rounds %s %d - %d %s", "SP", 0, 0, "RDT");
+
+    new warTotalRounds[16];
+    format(warTotalRounds, sizeof(warTotalRounds), "Runda %d / 15", 0);
+
+    new warRoundScoreText[50];
+    format(warRoundScoreText, sizeof(warRoundScoreText), "%s %d - %d %s", "SP", 0, 0, "RDT");
+
+    new warTurfPlayersText[50];
+    format(warTurfPlayersText, sizeof(warTurfPlayersText), "On turf: %s %d - %d %s", "SP", 0, 0, "RDT");
+
+    new warPlayerStatsText[25];
+    format(warPlayerStatsText, sizeof(warPlayerStatsText), "Ucideri: %d Morti: %d", 0, 0);
+
+    statsBox[playerid] = CreatePlayerTextDraw(playerid, 513.000000, 353.000000, statsBoxText);
+    PlayerTextDrawFont(playerid, statsBox[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, statsBox[playerid], 0.600000, 7.849992);
+    PlayerTextDrawTextSize(playerid, statsBox[playerid], 458.000000, 225.500000);
+    PlayerTextDrawSetOutline(playerid, statsBox[playerid], 1);
+    PlayerTextDrawSetShadow(playerid, statsBox[playerid], 0);
+    PlayerTextDrawAlignment(playerid, statsBox[playerid], 2);
+    PlayerTextDrawColor(playerid, statsBox[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, statsBox[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, statsBox[playerid], 135);
+    PlayerTextDrawUseBox(playerid, statsBox[playerid], 1);
+    PlayerTextDrawSetProportional(playerid, statsBox[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, statsBox[playerid], 0);
+
+    warTurfNumber[playerid] = CreatePlayerTextDraw(playerid, 559.000000, 365.000000, turfNameText);
+    PlayerTextDrawFont(playerid, warTurfNumber[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, warTurfNumber[playerid], 0.416666, 1.350000);
+    PlayerTextDrawTextSize(playerid, warTurfNumber[playerid], 606.500000, 24.500000);
+    PlayerTextDrawSetOutline(playerid, warTurfNumber[playerid], 0);
+    PlayerTextDrawSetShadow(playerid, warTurfNumber[playerid], 0);
+    PlayerTextDrawAlignment(playerid, warTurfNumber[playerid], 3);
+    PlayerTextDrawColor(playerid, warTurfNumber[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, warTurfNumber[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, warTurfNumber[playerid], 50);
+    PlayerTextDrawUseBox(playerid, warTurfNumber[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, warTurfNumber[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, warTurfNumber[playerid], 0);
+
+    warRoundScore[playerid] = CreatePlayerTextDraw(playerid, 565.000000, 354.000000, warMafiaRounds);
+    PlayerTextDrawFont(playerid, warRoundScore[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, warRoundScore[playerid], 0.416666, 1.350000);
+    PlayerTextDrawTextSize(playerid, warRoundScore[playerid], 606.500000, 24.500000);
+    PlayerTextDrawSetOutline(playerid, warRoundScore[playerid], 0);
+    PlayerTextDrawSetShadow(playerid, warRoundScore[playerid], 0);
+    PlayerTextDrawAlignment(playerid, warRoundScore[playerid], 3);
+    PlayerTextDrawColor(playerid, warRoundScore[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, warRoundScore[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, warRoundScore[playerid], 50);
+    PlayerTextDrawUseBox(playerid, warRoundScore[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, warRoundScore[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, warRoundScore[playerid], 0);
+
+    warRounds[playerid] = CreatePlayerTextDraw(playerid, 559.000000, 376.000000, warTotalRounds);
+    PlayerTextDrawFont(playerid, warRounds[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, warRounds[playerid], 0.416666, 1.350000);
+    PlayerTextDrawTextSize(playerid, warRounds[playerid], 606.500000, 24.500000);
+    PlayerTextDrawSetOutline(playerid, warRounds[playerid], 0);
+    PlayerTextDrawSetShadow(playerid, warRounds[playerid], 0);
+    PlayerTextDrawAlignment(playerid, warRounds[playerid], 3);
+    PlayerTextDrawColor(playerid, warRounds[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, warRounds[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, warRounds[playerid], 50);
+    PlayerTextDrawUseBox(playerid, warRounds[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, warRounds[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, warRounds[playerid], 0);
+
+    warCurrentPoints[playerid] = CreatePlayerTextDraw(playerid, 563.000000, 387.000000, warRoundScoreText);
+    PlayerTextDrawFont(playerid, warCurrentPoints[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, warCurrentPoints[playerid], 0.416666, 1.350000);
+    PlayerTextDrawTextSize(playerid, warCurrentPoints[playerid], 606.500000, 24.500000);
+    PlayerTextDrawSetOutline(playerid, warCurrentPoints[playerid], 0);
+    PlayerTextDrawSetShadow(playerid, warCurrentPoints[playerid], 0);
+    PlayerTextDrawAlignment(playerid, warCurrentPoints[playerid], 3);
+    PlayerTextDrawColor(playerid, warCurrentPoints[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, warCurrentPoints[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, warCurrentPoints[playerid], 50);
+    PlayerTextDrawUseBox(playerid, warCurrentPoints[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, warCurrentPoints[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, warCurrentPoints[playerid], 0);
+
+    warPlayersOnTurf[playerid] = CreatePlayerTextDraw(playerid, 595.000000, 398.000000, warTurfPlayersText);
+    PlayerTextDrawFont(playerid, warPlayersOnTurf[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, warPlayersOnTurf[playerid], 0.416666, 1.350000);
+    PlayerTextDrawTextSize(playerid, warPlayersOnTurf[playerid], 606.500000, 24.500000);
+    PlayerTextDrawSetOutline(playerid, warPlayersOnTurf[playerid], 0);
+    PlayerTextDrawSetShadow(playerid, warPlayersOnTurf[playerid], 0);
+    PlayerTextDrawAlignment(playerid, warPlayersOnTurf[playerid], 3);
+    PlayerTextDrawColor(playerid, warPlayersOnTurf[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, warPlayersOnTurf[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, warPlayersOnTurf[playerid], 50);
+    PlayerTextDrawUseBox(playerid, warPlayersOnTurf[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, warPlayersOnTurf[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, warPlayersOnTurf[playerid], 0);
+
+    warPlayerStats[playerid] = CreatePlayerTextDraw(playerid, 591.000000, 408.000000, warPlayerStatsText);
+    PlayerTextDrawFont(playerid, warPlayerStats[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, warPlayerStats[playerid], 0.416666, 1.350000);
+    PlayerTextDrawTextSize(playerid, warPlayerStats[playerid], 606.500000, 24.500000);
+    PlayerTextDrawSetOutline(playerid, warPlayerStats[playerid], 0);
+    PlayerTextDrawSetShadow(playerid, warPlayerStats[playerid], 0);
+    PlayerTextDrawAlignment(playerid, warPlayerStats[playerid], 3);
+    PlayerTextDrawColor(playerid, warPlayerStats[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, warPlayerStats[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, warPlayerStats[playerid], 50);
+    PlayerTextDrawUseBox(playerid, warPlayerStats[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, warPlayerStats[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, warPlayerStats[playerid], 0);
+
+    PlayerTextDrawShow(playerid, PlayerText:statsBox[playerid]);
+    PlayerTextDrawShow(playerid, PlayerText:warRoundScore[playerid]);
+    PlayerTextDrawShow(playerid, PlayerText:warTurfNumber[playerid]);
+    PlayerTextDrawShow(playerid, PlayerText:warRounds[playerid]);
+    PlayerTextDrawShow(playerid, PlayerText:warCurrentPoints[playerid]);
+    PlayerTextDrawShow(playerid, PlayerText:warPlayersOnTurf[playerid]);
+    PlayerTextDrawShow(playerid, PlayerText:warPlayerStats[playerid]);
+}
+
+getPlayersOnTurf(const playerMafia[], Float:poiX, Float:poiY, Float:poiZ) {
+    new playersOnTurf;
+    playersOnTurf = 0;
     new j = GetPlayerPoolSize();
     for (new i = 0; i <= j; i++) {
         if (GetPlayerVirtualWorld(i) == 2) {
-            new playerName[30];
-            GetPlayerName(i, playerName, sizeof(playerName));
-
             if (IsPlayerInRangeOfPoint(i, 250, poiX, poiY, poiZ)) {
-                if (isequal(getPlayerFactionName(playerName), playerMafia)) {
-                    players = players + 1;
+                if (isequal(getPlayerFactionName(i), playerMafia)) {
+                    playersOnTurf = playersOnTurf + 1;
                 }
             }
         }
     }
-    return players;
+    return playersOnTurf;
 }
 
 pointFromKill(playerid, killerid) {
@@ -596,85 +847,143 @@ calculateWorstPlayer(playerid) {
 
 }
 
-/*
-use setimerex for time related activs
-ex: settimerex(pointforinfluence, 30000);
-    pointforinfluence() {
-        checks for total players on turf 
-        gives point for most of the same mafia on turf
-    }
-*/
 new influenceTimer;
-startWar() {
-    new query[150];
+new endWarTimer;
+new roundTimer;
+startWar(const turf_id[], attackerid) {
+    new attacker[9];
+    attacker = getPlayerFactionName(attackerid);
 
-    format(query, sizeof(query), "SELECT * FROM 'Wars' ORDER BY war_id ASC LIMIT 1");
+    new defender[9];
+    defender = getPlayerOpposedFaction(attackerid);
 
-    new DBResult:result = db_query(connection, query);
-    if (db_num_rows(result)) {
-        new defender[4];
-        new attacker[4];
-        new warCount;
-        new turfId;
+    new attackedTurfId = strval(turf_id);
 
-        db_get_field_assoc(result, "attacker", attacker, sizeof(attacker));
-        db_get_field_assoc(result, "defender", defender, sizeof(defender));
-        warCount = db_get_field_assoc_int(result, "count");
-        turfId = db_get_field_assoc_int(result, "turf_id");
+    new startMessage[100];
+    format(startMessage, sizeof(startMessage), "%s vor ataca turf-ul cu numarul %d detinut de mafia %s", attacker, attackedTurfId, defender);
+    SendClientMessageToAll(COLOR_PURPLE, startMessage);
 
-        new startMessage[50];
-        format(startMessage, sizeof(startMessage), "%s vor ataca turf-ul %d detinut de mafia %s", attacker, turfId, defender);
-        SendClientMessageToAll(COLOR_PURPLE, startMessage);
+    SetSVarInt("warTurf", attackedTurfId);
 
-        prepareTurf(turfId);
+    prepareTurf(attackedTurfId);
+    preparePlayersForWar();
+
+    SetSVarInt("roundsRDT", 0);
+    SetSVarInt("roundsSP", 0);
+
+    SetSVarInt("currentRound", 1);
+
+    SetSVarInt("pointsRDT", 0);
+    SetSVarInt("pointsSP", 0);
+
+    SetSVarString("isWarOn", "true");
+
+    // prod
+    // influenceTimer = SetTimer("pointFromInfluence", 37500, true);
+    // roundTimer = SetTimer("advanceRound", 150000, true);
+
+    // endWarTimer = SetTimer("endWar", 2250000, false);
+
+
+    // dev
+    influenceTimer = SetTimer("pointFromInfluence", 10000, true);
+    roundTimer = SetTimer("advanceRound", 20000, true);
+
+    endWarTimer = SetTimer("endWar", 60000, false);
+}
+
+forward advanceRound();
+public advanceRound() {
+    new rdtRounds = GetSVarInt("roundsRDT");
+    new spRounds = GetSVarInt("roundsSP");
+    if (rdtRounds >= 8 || spRounds >= 8) {
+        endWar();
+    }
+
+    new pointsRDT = GetSVarInt("pointsRDT");
+    new pointsSP = GetSVarInt("pointsSP");
+
+    if (pointsRDT > pointsSP) {
+        new roundsRDT = GetSVarInt("roundsRDT");
+        SetSVarInt("roundsRDT", (roundsRDT + 1));
+        new message[50];
+        format(message, sizeof(message), "Rounds RDT: %d", GetSVarInt("roundsRDT"));
+        SendClientMessageToAll(COLOR_RED, message);
         SetSVarInt("pointsRDT", 0);
+    } else if (pointsRDT < pointsSP) {
+        new roundsSP = GetSVarInt("roundsSP");
+        new message[50];
+        format(message, sizeof(message), "Rounds SP: %d", GetSVarInt("roundsSP"));
+        SendClientMessageToAll(COLOR_RED, message);
+        SetSVarInt("roundsSP", (roundsSP + 1));
         SetSVarInt("pointsSP", 0);
-        SetSVarString("isWarOn", "true");
-
-        influenceTimer = SetTimer("pointFromInfluence", 37500, true);
-
-    } else {
-        SendClientMessageToAll(COLOR_RED, "Nu exista war-uri pentru azi");
     }
-    db_free_result(result);
-}
 
-forward pointFromInfluence(turfIdForWar);
-public pointFromInfluence(turfIdForWar) {
-    new query[150];
-    format(query, sizeof(query), "SELECT poiX, poiY, poiZ FROM Turfs WHERE turf_id = %d", turfIdForWar);
-    new DBResult:result = db_query(connection, query);
+    new warTotalRounds[16];
+    format(warTotalRounds, sizeof(warTotalRounds), "Runda %d / 15", GetSVarInt("currentRound"));
 
-    if (db_num_rows(result)) {
-        new Float:poiX, Float:poiY, Float:poiZ;
+    new warRoundScoreText[50];
+    format(warRoundScoreText, sizeof(warRoundScoreText), "%s %d - %d %s", "SP", spRounds, rdtRounds, "RDT");
 
-        poiX = db_get_field_assoc_float(result, "poiX");
-        poiY = db_get_field_assoc_float(result, "poiY");
-        poiZ = db_get_field_assoc_float(result, "poiZ");
-
-        new playersRDT, playersSP;
-        new rdtName[9];
-        rdtName = "RDT";
-        new spName[9];
-        spName = "SP";
-        playersRDT = getPlayersOnTurf(rdtName, poiX, poiY, poiZ);
-        playersSP = getPlayersOnTurf(spName, poiX, poiY, poiZ);
-
-        if (playersRDT > playersSP) {
-            new pointRDT = GetSVarInt("pointsRDT");
-            SetSVarInt("pointsRDT", (pointRDT + 1));
-        } else if (playersRDT < playersSP) {
-            new pointSP = GetSVarInt("pointsSP");
-            SetSVarInt("pointsSP", (pointSP + 1));
-        } else {}
+    new j = GetPlayerPoolSize();
+    for (new i = 0; i <= j; i++) {
+        if (GetPlayerVirtualWorld(i) == 2) {
+            PlayerTextDrawSetString(i, PlayerText:warRounds[i], warRoundScoreText);
+            PlayerTextDrawSetString(i, PlayerText:warRoundScore[i], warRoundScoreText);
+        }
     }
 }
 
-/*
-should delete the played war from db
-*/
+forward pointFromInfluence();
+public pointFromInfluence() {
+    new playersRDT, playersSP;
+    new rdtName[9];
+    rdtName = "RDT";
+    new spName[9];
+    spName = "SP";
+    playersRDT = getPlayersOnTurf(rdtName, GetSVarFloat("poiX"), GetSVarFloat("poiY"), GetSVarFloat("poiZ"));
+    playersSP = getPlayersOnTurf(spName, GetSVarFloat("poiX"), GetSVarFloat("poiY"), GetSVarFloat("poiZ"));
+
+    new pointRDT = GetSVarInt("pointsRDT");
+    new pointSP = GetSVarInt("pointsSP");
+    if (playersRDT > playersSP) {
+        SetSVarInt("pointsRDT", (pointRDT + 1));
+    } else if (playersRDT < playersSP) {
+        SetSVarInt("pointsSP", (pointSP + 1));
+    }
+
+    new j = GetPlayerPoolSize();
+    for (new i = 0; i <= j; i++) {
+        if (GetPlayerVirtualWorld(i) == 2) {
+            new warTurfPlayersText[50];
+            format(warTurfPlayersText, sizeof(warTurfPlayersText), "On turf: %s %d - %d %s", "SP", playersSP, playersRDT, "RDT");
+            PlayerTextDrawSetString(i, PlayerText:warPlayersOnTurf[i], warTurfPlayersText);
+        }
+    }
+}
+
 endWar() {
-
+    // hide text draws
+    new j = GetPlayerPoolSize();
+    for (new i = 0; i <= j; i++) {
+        if (GetPlayerVirtualWorld(i) == 2) {
+            PlayerTextDrawHide(i, PlayerText:statsBox[i]);
+            PlayerTextDrawHide(i, PlayerText:warRoundScore[i]);
+            PlayerTextDrawHide(i, PlayerText:warTurfNumber[i]);
+            PlayerTextDrawHide(i, PlayerText:warRounds[i]);
+            PlayerTextDrawHide(i, PlayerText:warCurrentPoints[i]);
+            PlayerTextDrawHide(i, PlayerText:warPlayersOnTurf[i]);
+            PlayerTextDrawHide(i, PlayerText:warPlayerStats[i]);
+            SetPlayerVirtualWorld(i, 0);
+        }
+    }
+    new warTurfId = GetSVarInt("warTurf");
+    ZoneStopFlashForAll(warTurfId);
+    SetSVarString("isWarOn", "false");
+    KillTimer(influenceTimer);
+    KillTimer(endWarTimer);
+    KillTimer(roundTimer);
+    SendClientMessageToAll(COLOR_BLUE, "War-ul s-a incheiat");
 }
 
 // ----------------------- COMMANDS ----------------------- 
@@ -711,36 +1020,22 @@ COMMAND:id(playerid, params[]) {
 }
 
 COMMAND:turfs(playerid, params[]) {
-    new query[150];
-
-    format(query, sizeof(query), "SELECT turf_number, owner FROM 'Turfs'");
-
-    new DBResult:result = db_query(connection, query);
-    for (new i = 1; i <= db_num_rows(result); i++) {
-        new turfNumber;
-        new turfOwner[4];
-
-        turfNumber = db_get_field_assoc_int(result, "turf_number");
-        db_get_field_assoc(result, "owner", turfOwner, sizeof(turfOwner));
-
-        new rdtName[4];
-        rdtName = "RDT";
-        new spName[4];
-        spName = "SP";
-
-        if (isequal(turfOwner, rdtName)) {
-            ShowZoneForPlayer(playerid, turfs[turfNumber], 0xFF0000AA, 0xFFFFFFFF, 0xFFFFFFFF);
-        } else if (isequal(turfOwner, spName)) {
-            ShowZoneForPlayer(playerid, turfs[turfNumber], 0x9400D3AA, 0xFFFFFFFF, 0xFFFFFFFF);
+    if (GetPVarInt(playerid, "areTurfsDisplayed") == 0) {
+        for (new i = 1; i <= 24; i++) {
+            new turfOwner = turfs[i][owner];
+            if (turfOwner == RDT) {
+                ShowZoneForPlayer(playerid, turfs[i][turfId], 0xFF0000AA, 0xFFFFFFFF, 0xFFFFFFFF);
+            } else if (turfOwner == SP) {
+                ShowZoneForPlayer(playerid, turfs[i][turfId], 0x9400D3AA, 0xFFFFFFFF, 0xFFFFFFFF);
+            }
+            SetPVarInt(playerid, "areTurfsDisplayed", 1);
         }
-        db_next_row(result);
+    } else {
+        for (new i = 1; i <= 24; i++) {
+            HideZoneForPlayer(playerid, turfs[i][turfId]);
+        }
     }
-    db_free_result(result);
     return 1;
-}
-
-COMMAND:testwar1(playerid, params[]) {
-    preparePlayersForWar();
 }
 
 /*

@@ -17,7 +17,6 @@
 		"version": "0.3.7",
 		"mode": "server",
 		"filterscripts": [
-			"faction",
 			"tools",
 			"gl_chat"
 		],
@@ -27,7 +26,6 @@
 			"a_zone",
 			"strlib"
 		],
-		"password": "kJeaV!U@4TXy\\j<W",
 		"rcon_password": "danix1923",
 		"port": 7777,
 		"hostname": "War Between Mafia - Clan CLR",
@@ -36,6 +34,7 @@
 		"mapname": "Peris / Ferentexas",
 		"weburl": "discord.gg/SE5yvJyX5C",
 		"gamemodetext": "Unknown",
+		"password": "kJeaV!U@4TXy\\j\u003cW",
 		"announce": false,
 		"lanmode": false,
 		"query": true,
@@ -57,8 +56,8 @@
 		"minconnectiontime": 0,
 		"lagcompmode": 1,
 		"connseedtime": 300000,
-		"db_logging": false,
-		"db_log_queries": false,
+		"db_logging": true,
+		"db_log_queries": true,
 		"conncookies": true,
 		"cookielogging": false,
 		"output": true

@@ -30,14 +30,7 @@ loadDB() {
     } else {
         print("failed to connect to db");
     }
-
-    new query[256] = "CREATE TABLE IF NOT EXISTS 'Players' (player_id INTEGER PRIMARY KEY, player_name TEXT NOT NULL UNIQUE, player_password TEXT NOT NULL, player_faction TEXT NOT NULL, faction_rank TEXT NOT NULL)";
-    db_free_result(db_query(connection, query));
-
-    query = "CREATE TABLE IF NOT EXISTS 'Turfs' (turf_id INTEGER PRIMARY KEY, owner TEXT NOT NULL, owner_color TEXT NOT NULL, minX INTEGER, minY INTEGER, maxX INTEGER, maxY INTEGER)";
-    db_free_result(db_query(connection, query));
 }
-
 // --------------------- COMMANDS --------------------- 
 
 COMMAND:spec(playerid, params[]) {
