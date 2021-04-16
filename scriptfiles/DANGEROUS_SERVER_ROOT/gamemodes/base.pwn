@@ -24,9 +24,9 @@
 #define SP_CAR_COLOR 211
 
 enum {
-    COLOR_RED = 0xFF0000FF,
-        COLOR_GREEN = 0x7FFF00FF,
-        COLOR_BLUE = 0x0FFFFFF,
+    COLOR_RED = 0xFF0000,
+        COLOR_GREEN = 0x7FFF00,
+        COLOR_BLUE = 0x0FFFFF,
         COLOR_PURPLE = 0x8A2BE2FF
 }
 
@@ -109,7 +109,6 @@ public OnPlayerConnect(playerid) {
     playerWarKills[playerid] = 0;
     playerWarDeaths[playerid] = 0;
     SetPVarInt(playerid, "areTurfsDisplayed", 0);
-
 
     new query[100];
 
@@ -420,10 +419,7 @@ createDBs() {
         new query[386] = "CREATE TABLE IF NOT EXISTS 'Players' (player_id INTEGER PRIMARY KEY, player_name TEXT NOT NULL UNIQUE, player_password TEXT NOT NULL, player_faction TEXT NOT NULL, faction_rank INTEGER NOT NULL, player_kills INTEGER, player_deaths INTEGER, player_bests INTEGER, player_worths INTEGER)";
         db_free_result(db_query(connection, query));
 
-        query = "CREATE TABLE IF NOT EXISTS 'Turfs' (turf_id INTEGER PRIMARY KEY, turf_name TEXT NOT NULL, turf_number INTEGER NOT NULL, owner TEXT NOT NULL, attacked TEXT NOT NULL DEFAULT 'false', minX REAL, minY REAL, maxX REAL, maxY REAL, poiX REAL, poiY REAL, poiZ REAL)";
-        db_free_result(db_query(connection, query));
-
-        query = "CREATE TABLE IF NOT EXISTS 'Wars' (war_id INTEGER PRIMARY KEY, turf_id INTEGER NOT NULL, defender TEXT NOT NULL, attacker TEXT NOT NULL, count INTEGER, FOREIGN KEY (turf_id) REFERENCES Turfs (turf_id))";
+        query = "CREATE TABLE IF NOT EXISTS 'Turfs' (turf_id INTEGER PRIMARY KEY, turf_name TEXT NOT NULL, turf_number INTEGER NOT NULL, owner INTEGER NOT NULL, attacked TEXT NOT NULL DEFAULT 'false', minX REAL, minY REAL, maxX REAL, maxY REAL, poiX REAL, poiY REAL, poiZ REAL)";
         db_free_result(db_query(connection, query));
     } else {
         print("failed to connect to db");
@@ -433,18 +429,14 @@ createDBs() {
 loadTurfs() {
     new query[100];
 
-    format(query, sizeof(query), "SELECT turf_number, owner, minX, minY, maxX, maxY FROM Turfs;");
+    format(query, sizeof(query), "SELECT turf_number, turf_name, owner, minX, minY, maxX, maxY FROM Turfs;");
 
     new DBResult:queryResult = db_query(connection, query);
 
     if (queryResult) {
-        new rdtName[4], spName[4];
-        rdtName = "RDT";
-        spName = "SP";
-
         for (new i = 1; i <= 24; i++) {
             new turfNumber;
-            new turfOwner[4];
+            new turfOwner;
             new Float:turfMinX;
             new Float:turfMinY;
             new Float:turfMaxX;
@@ -454,16 +446,10 @@ loadTurfs() {
             turfMinY = Float:db_get_field_assoc_float(queryResult, "minY");
             turfMaxX = Float:db_get_field_assoc_float(queryResult, "maxX");
             turfMaxY = Float:db_get_field_assoc_float(queryResult, "maxY");
-            db_get_field_assoc(queryResult, "owner", turfOwner, sizeof(turfOwner));
+            turfOwner = db_get_field_assoc_int(queryResult, "owner");
 
             turfs[i][turfNumber] = db_get_field_assoc_int(queryResult, "turf_number");
-            if (isequal(turfOwner, rdtName)) {
-                turfs[i][owner] = RDT;
-            } else if (isequal(turfOwner, spName)) {
-                turfs[i][owner] = SP;
-            } else {
-                print("no match found");
-            }
+            turfs[i][owner] = turfOwner;
 
             turfs[i][turfId] = CreateZone(turfMinX, turfMinY, turfMaxX, turfMaxY);
             CreateZoneBorders(turfs[i][turfId]);
@@ -477,44 +463,45 @@ loadTurfs() {
     db_free_result(queryResult);
 }
 
-loadDataForAttack() {
+loadDataForAttack(playerid) {
     new query[100];
-    new returnData[550];
+    new returnData[650];
 
     new headers[33];
     headers = "Turf Number\tTurf Name\tOwner\n";
     strcatmid(returnData, headers);
 
-    for (new i = 1; i <= 24; i++) {
-        format(query, sizeof(query), "SELECT turf_name, turf_number, owner, attacked FROM 'Turfs' WHERE turf_number = %d", i);
+    for (new id = 1; id <= 24; id++) {
+        format(query, sizeof(query), "SELECT turf_number, turf_name, owner FROM Turfs WHERE turf_id = %d;", id);
 
         new DBResult:queryResult = db_query(connection, query);
-        if (db_num_rows(queryResult)) {
-            new turfAttacked[6];
+        new dbTurfNumber;
+        new turfName[15];
+        new dbTurfOwner;
 
-            db_get_field_assoc(queryResult, "attacked", turfAttacked, sizeof(turfAttacked));
+        dbTurfNumber = db_get_field_assoc_int(queryResult, "turf_number");
+        db_get_field_assoc(queryResult, "turf_name", turfName, sizeof(turfName));
+        dbTurfOwner = db_get_field_assoc_int(queryResult, "owner");
 
-            new trueStr[6];
-            trueStr = "true";
-            if (isequal(turfAttacked, trueStr)) {
-                db_next_row(queryResult);
-            }
-
-            new turfName[15];
-            new dbTurfNumber;
-            new turfOwner[5];
-
-            db_get_field_assoc(queryResult, "turf_name", turfName, sizeof(turfName));
-            dbTurfNumber = db_get_field_assoc_int(queryResult, "turf_number");
-            db_get_field_assoc(queryResult, "owner", turfOwner, sizeof(turfOwner));
-
-            new temp[60];
-            format(temp, sizeof(temp), "%d\t%s\t%s\n", dbTurfNumber, turfName, turfOwner);
-
-            strcatmid(returnData, temp);
-
-            db_next_row(queryResult);
+        if (dbTurfOwner == GetPlayerTeam(playerid)) {
+            continue;
         }
+
+        printf("db data: %d, %s, %d", dbTurfNumber, turfName, dbTurfOwner);
+
+        new turfOwner[12];
+        if (dbTurfOwner == RDT) {
+            turfOwner = "{DE0000}RDT";
+        } else if (dbTurfOwner == SP) {
+            turfOwner = "{DE09DA}SP";
+        } else {
+            printf("owner data not matching: %s", dbTurfOwner);
+        }
+        new temp[60];
+        format(temp, sizeof(temp), "%d\t%s\t%s\n", dbTurfNumber, turfName, turfOwner);
+
+        strcatmid(returnData, temp);
+
         db_free_result(queryResult);
     }
     return returnData;
@@ -561,11 +548,6 @@ dialog attack(playerid, response, listitem, inputtext[]) {
         SendClientMessage(playerid, COLOR_RED, "Un war este deja in desfasurare");
         return;
     }
-
-    // if (GetSVarInt("warCount") == 4) {
-    //     SendClientMessage(playerid, COLOR_RED, "Sunt deja programate 4 war-uri");
-    //     return;
-    // }
 
     startWar(inputtext, playerid);
 }
@@ -879,17 +861,16 @@ startWar(const turf_id[], attackerid) {
     SetSVarString("isWarOn", "true");
 
     // prod
-    // influenceTimer = SetTimer("pointFromInfluence", 37500, true);
-    // roundTimer = SetTimer("advanceRound", 150000, true);
+    influenceTimer = SetTimer("pointFromInfluence", 37500, true);
+    roundTimer = SetTimer("advanceRound", 150000, true);
 
-    // endWarTimer = SetTimer("endWar", 2250000, false);
-
+    endWarTimer = SetTimer("endWar", 2250000, false);
 
     // dev
-    influenceTimer = SetTimer("pointFromInfluence", 10000, true);
-    roundTimer = SetTimer("advanceRound", 20000, true);
+    // influenceTimer = SetTimer("pointFromInfluence", 10000, true);
+    // roundTimer = SetTimer("advanceRound", 20000, true);
 
-    endWarTimer = SetTimer("endWar", 60000, false);
+    // endWarTimer = SetTimer("endWar", 60000, false);
 }
 
 forward advanceRound();
@@ -906,15 +887,9 @@ public advanceRound() {
     if (pointsRDT > pointsSP) {
         new roundsRDT = GetSVarInt("roundsRDT");
         SetSVarInt("roundsRDT", (roundsRDT + 1));
-        new message[50];
-        format(message, sizeof(message), "Rounds RDT: %d", GetSVarInt("roundsRDT"));
-        SendClientMessageToAll(COLOR_RED, message);
         SetSVarInt("pointsRDT", 0);
     } else if (pointsRDT < pointsSP) {
         new roundsSP = GetSVarInt("roundsSP");
-        new message[50];
-        format(message, sizeof(message), "Rounds SP: %d", GetSVarInt("roundsSP"));
-        SendClientMessageToAll(COLOR_RED, message);
         SetSVarInt("roundsSP", (roundsSP + 1));
         SetSVarInt("pointsSP", 0);
     }
@@ -923,7 +898,7 @@ public advanceRound() {
     format(warTotalRounds, sizeof(warTotalRounds), "Runda %d / 15", GetSVarInt("currentRound"));
 
     new warRoundScoreText[50];
-    format(warRoundScoreText, sizeof(warRoundScoreText), "%s %d - %d %s", "SP", spRounds, rdtRounds, "RDT");
+    format(warRoundScoreText, sizeof(warRoundScoreText), "Rounds %s %d - %d %s", "SP", spRounds, rdtRounds, "RDT");
 
     new j = GetPlayerPoolSize();
     for (new i = 0; i <= j; i++) {
@@ -1020,6 +995,11 @@ COMMAND:id(playerid, params[]) {
 }
 
 COMMAND:turfs(playerid, params[]) {
+    if (GetPVarInt(playerid, "isWarOn") == 1) {
+        new warTurfId = GetSVarInt("warTurf");
+        ZoneFlashForAll(turfs[warTurfId][turfId], -1);
+    }
+
     if (GetPVarInt(playerid, "areTurfsDisplayed") == 0) {
         for (new i = 1; i <= 24; i++) {
             new turfOwner = turfs[i][owner];
@@ -1043,8 +1023,8 @@ COMMAND:turfs(playerid, params[]) {
  should be only 4 attacks on a sesh
 */
 COMMAND:attack(playerid, params[]) {
-    new turfData[550];
-    turfData = loadDataForAttack();
+    new turfData[650];
+    turfData = loadDataForAttack(playerid);
 
     OpenDialog(playerid, "attack", DIALOG_STYLE_TABLIST_HEADERS,
         "Attack Menu",
@@ -1099,6 +1079,11 @@ COMMAND:invitemember(playerid, params[]) {
     if (sscanf(params, "i", takerId)) {
         SendClientMessage(playerid, COLOR_RED, "Foloseste: /invitemember <id player>");
     } else {
+        if (!IsPlayerConnected(takerId)) {
+            SendClientMessage(playerid, COLOR_RED, "Nu poti invita un jucator care nu este conectat!");
+            return 1;
+        }
+
         // check if the inviter is a civil
         if (checkIfCivil(playerid)) {
             SendClientMessage(playerid, COLOR_RED, "Nu poti invita un membru ca civil!");
