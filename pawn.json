@@ -10,7 +10,8 @@
 		"pawn-lang/YSI-Includes",
 		"oscar-broman/strlib",
 		"Sreyas-Sreelal/samp-bcrypt",
-		"pawn-lang/sa-mp-fixes"
+		"pawn-lang/sa-mp-fixes",
+		"NexiusTailer/Nex-AC"
 	],
 	"local": true,
 	"runtime": {
