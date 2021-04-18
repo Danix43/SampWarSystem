@@ -25,7 +25,7 @@
 #define SP_CAR_COLOR 211
 
 enum {
-    COLOR_RED = 0x00FF00,
+    COLOR_RED = 0xFF0000,
         COLOR_GREEN = 0x7FFF00,
         COLOR_BLUE = 0x0FFFFF,
         COLOR_PURPLE = 0x8A2BE2FF
@@ -51,7 +51,6 @@ new players[MAX_PLAYERS][Player];
 new playerWarKills[MAX_PLAYERS];
 new playerWarDeaths[MAX_PLAYERS];
 
-
 // text draws
 new PlayerText:warTurfNumber[MAX_PLAYERS];
 new PlayerText:statsBox[MAX_PLAYERS];
@@ -60,7 +59,6 @@ new PlayerText:warRounds[MAX_PLAYERS];
 new PlayerText:warCurrentPoints[MAX_PLAYERS];
 new PlayerText:warPlayersOnTurf[MAX_PLAYERS];
 new PlayerText:warPlayerStats[MAX_PLAYERS];
-
 
 new PlayerText:bestBox[MAX_PLAYERS];
 new PlayerText:bestPlayerSkinBox[MAX_PLAYERS];
@@ -73,7 +71,6 @@ new PlayerText:worstPlayerSkinBox[MAX_PLAYERS];
 new PlayerText:worstPlayerText[MAX_PLAYERS];
 new PlayerText:worstPlayerName[MAX_PLAYERS];
 new PlayerText:worstPlayerStats[MAX_PLAYERS];
-
 
 // SP
 new spVehiclesVw1[10];
@@ -91,7 +88,22 @@ enum Turf {
 // all turfs 
 new turfs[25][Turf];
 
+new pickupWeapon;
+new pickupHeal;
+
 static DB:connection;
+
+/*
+TODO: - fix players on turf (SP)
+        - fix war text draw
+        - add damage informer
+        - worst player fix
+        - fix hq enters
+        - fix war turf owner after war
+        - empty kill feed after war
+        - drop weapon and heal after dead 
+        - ban by gpci
+*/
 
 main() {
     print("\n----------------------------------");
@@ -126,9 +138,6 @@ public OnPlayerConnect(playerid) {
     playerWarDeaths[playerid] = 0;
     SetPVarInt(playerid, "areTurfsDisplayed", 0);
 
-    showBestPlayer();
-    showWorstPlayer();
-
     new query[100];
 
     new name[30];
@@ -149,19 +158,27 @@ public OnPlayerConnect(playerid) {
 public OnPlayerDeath(playerid, killerid, reason) {
     SendDeathMessage(killerid, playerid, reason);
 
-    if (killerid != INVALID_PLAYER_ID) {
-        pointFromKill(playerid, killerid);
-        playerWarKills[killerid]++;
+    new trueText[5], warOnResponse[5];
+    trueText = "true";
+    GetSVarString("isWarOn", warOnResponse, sizeof(warOnResponse));
+
+    if (isequal(warOnResponse, trueText)) {
+        if (killerid != INVALID_PLAYER_ID) {
+            pointFromKill(playerid, killerid);
+            playerWarKills[killerid]++;
+            createHealPickup(killerid);
+            createWeaponPickup(killerid);
+        }
+
+        playerWarDeaths[playerid]++;
+
+        new warPlayerStatsText[25];
+        format(warPlayerStatsText, sizeof(warPlayerStatsText), "Ucideri: %d Morti: %d", playerWarKills[playerid], playerWarDeaths[playerid]);
+        PlayerTextDrawSetString(playerid, warPlayerStats[playerid], warPlayerStatsText);
+
+        format(warPlayerStatsText, sizeof(warPlayerStatsText), "Ucideri: %d Morti: %d", playerWarKills[killerid], playerWarDeaths[killerid]);
+        PlayerTextDrawSetString(killerid, warPlayerStats[killerid], warPlayerStatsText);
     }
-
-    playerWarDeaths[playerid]++;
-
-    new warPlayerStatsText[25];
-    format(warPlayerStatsText, sizeof(warPlayerStatsText), "Ucideri: %d Morti: %d", playerWarKills[playerid], playerWarDeaths[playerid]);
-    PlayerTextDrawSetString(playerid, warPlayerStats[playerid], warPlayerStatsText);
-
-    format(warPlayerStatsText, sizeof(warPlayerStatsText), "Ucideri: %d Morti: %d", playerWarKills[killerid], playerWarDeaths[killerid]);
-    PlayerTextDrawSetString(killerid, warPlayerStats[killerid], warPlayerStatsText);
 
     return 1;
 }
@@ -172,11 +189,11 @@ public OnPlayerRequestClass(playerid, classid) {
 
     new query[100];
 
-    format(query, sizeof(query), "SELECT player_faction, faction_rank FROM 'Players' WHERE player_name = '%s'", name);
+    format(query, sizeof(query), "SELECT player_faction, faction_rank FROM 'Players' WHERE player_name = '%s';", name);
 
     new DBResult:result = db_query(connection, query);
 
-    if (db_num_rows(result)) {
+    if (db_num_rows(result) == 1) {
         new playerFaction[20];
         new playerRank;
 
@@ -207,7 +224,6 @@ public OnPlayerSpawn(playerid) {
     return 1;
 }
 
-// needs fixing
 public OnPlayerKeyStateChange(playerid, newkeys, oldkeys) {
     if ((newkeys & KEY_SECONDARY_ATTACK) && !(oldkeys & KEY_SECONDARY_ATTACK)) {
         if (GetPlayerInterior(playerid) == 0) {
@@ -221,26 +237,45 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys) {
                 SetPlayerInterior(playerid, 3);
                 SetPlayerPos(playerid, -2638.8232, 1407.3395, 906.4609);
             }
-        }
-        // SP HQ
-        if (GetPlayerInterior(playerid) == 18) {
-            SetPlayerInterior(playerid, 0);
-            SetPlayerPos(playerid, 1454.88538, 751.07147, 11.02340);
-        }
-        // RDT HQ
-        if (GetPlayerInterior(playerid) == 3) {
-            SetPlayerInterior(playerid, 0);
-            SetPlayerPos(playerid, 2633.78174, 1825.46545, 11.02340);
+        } else if (!GetPlayerInterior(playerid) == 0) {
+            // SP HQ
+            if (GetPlayerInterior(playerid) == 18) {
+                SetPlayerInterior(playerid, 0);
+                SetPlayerPos(playerid, 1454.88538, 751.07147, 11.02340);
+            }
+            // RDT HQ
+            if (GetPlayerInterior(playerid) == 3) {
+                SetPlayerInterior(playerid, 0);
+                SetPlayerPos(playerid, 2633.78174, 1825.46545, 11.02340);
+            }
         }
     }
+
+    PlayerTextDrawShow(playerid, bestBox[playerid]);
+    PlayerTextDrawShow(playerid, bestPlayerSkinBox[playerid]);
+    PlayerTextDrawShow(playerid, bestPlayerText[playerid]);
+    PlayerTextDrawShow(playerid, bestPlayerName[playerid]);
+    PlayerTextDrawShow(playerid, bestPlayerStats[playerid]);
+
+    PlayerTextDrawShow(playerid, worstBox[playerid]);
+    PlayerTextDrawShow(playerid, worstPlayerSkinBox[playerid]);
+    PlayerTextDrawShow(playerid, worstPlayerText[playerid]);
+    PlayerTextDrawShow(playerid, worstPlayerName[playerid]);
+    PlayerTextDrawShow(playerid, worstPlayerStats[playerid]);
     return 1;
 }
 
-forward OnCheatDetected(playerid, ip_address[], type, code);
-public OnCheatDetected(playerid, ip_address[], type, code) {
-    new message[50];
-    format(message, sizeof(message), "id %d a folosit cod. Data: ip: %s, tip: %d %d", playerid, ip_address, type, code);
-    SendClientMessageToAll(-1, message);
+public OnPlayerPickUpPickup(playerid, pickupid) {
+    if (pickupid == pickupWeapon) {
+        SendClientMessage(playerid, COLOR_GREEN, "Ai luat o arma de pe jos!");
+
+    } else if (pickupid == pickupHeal) {
+        SendClientMessage(playerid, COLOR_GREEN, "Ai folosit un medkit de pe jos!");
+        new Float:oldHp;
+        GetPlayerHealth(playerid, oldHp);
+        SetPlayerHealth(playerid, (oldHp + 25));
+    }
+    return 1;
 }
 
 // ----------------------- SETUPS ----------------------- 
@@ -436,6 +471,28 @@ getPlayerOpposedFaction(playerid) {
     return factionName;
 }
 
+// turfOwner - should give the int of the faction
+getTurfOpposedFaction(turfOwner) {
+    if (turfOwner == RDT) {
+        return SP;
+    } else if (turfOwner == SP) {
+        return RDT;
+    }
+    return turfOwner;
+}
+
+createWeaponPickup(deadId) {
+    new Float:deadPosX, Float:deadPosY, Float:deadPosZ;
+    GetPlayerPos(deadId, deadPosX, deadPosY, deadPosZ);
+    pickupWeapon = CreatePickup(19832, 19, deadPosX, deadPosY, deadPosZ, 2);
+}
+
+createHealPickup(deadId) {
+    new Float:deadPosX, Float:deadPosY, Float:deadPosZ;
+    GetPlayerPos(deadId, deadPosX, deadPosY, deadPosZ);
+    pickupHeal = CreatePickup(11738, 19, deadPosX, deadPosY, deadPosZ, 2);
+}
+
 // ----------------------- DB RELATED ----------------------- 
 
 createDBs() {
@@ -512,8 +569,6 @@ loadDataForAttack(playerid) {
         if (dbTurfOwner == GetPlayerTeam(playerid)) {
             continue;
         }
-
-        printf("db data: %d, %s, %d", dbTurfNumber, turfName, dbTurfOwner);
 
         new turfOwner[12];
         if (dbTurfOwner == RDT) {
@@ -603,7 +658,7 @@ public OnPasswordVerify(playerid, bool:success) {
     if (success) {
         SendClientMessage(playerid, -1, "Your logged in!");
     } else {
-        SendClientMessage(playerid, 0xFF0000FF, "Login failed!");
+        SendClientMessage(playerid, COLOR_RED, "Login failed!");
         SetTimerEx("KickWithDelay", 1000, false, "i", playerid);
     }
 }
@@ -644,7 +699,7 @@ prepareTurf(turfIdForWar) {
         SetSVarFloat("poiY", db_get_field_assoc_float(result, "poiY"));
         SetSVarFloat("poiZ", db_get_field_assoc_float(result, "poiZ"));
 
-        ZoneFlashForAll(turfs[dbTurfNumber][turfId], 0x00FF00FF);
+        ZoneFlashForAll(turfs[dbTurfNumber][turfId], -1);
     }
     db_free_result(result);
 }
@@ -839,139 +894,79 @@ pointFromKill(playerid, killerid) {
     }
 }
 
-// calculateBestPlayer() {
-//     new playersStats[MAX_PLAYERS][Player];
+showBestPlayer(playerid) {
+    bestBox[playerid] = CreatePlayerTextDraw(playerid, 195.000000, 89.000000, "_");
+    PlayerTextDrawFont(playerid, bestBox[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, bestBox[playerid], 0.675000, 29.200008);
+    PlayerTextDrawTextSize(playerid, bestBox[playerid], 303.500000, 190.000000);
+    PlayerTextDrawSetOutline(playerid, bestBox[playerid], 1);
+    PlayerTextDrawSetShadow(playerid, bestBox[playerid], 0);
+    PlayerTextDrawAlignment(playerid, bestBox[playerid], 2);
+    PlayerTextDrawColor(playerid, bestBox[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, bestBox[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, bestBox[playerid], -121);
+    PlayerTextDrawUseBox(playerid, bestBox[playerid], 1);
+    PlayerTextDrawSetProportional(playerid, bestBox[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, bestBox[playerid], 0);
 
-//     new j = GetPlayerPoolSize();
-//     for (new playerid = 0; playerid <= j; playerid++) {
-//         if (GetPlayerVirtualWorld(playerid) == 2) {
-//             new playerKills = playerWarKills[playerid];
-//             new playerDeaths = playerWarDeaths[playerid];
+    bestPlayerSkinBox[playerid] = CreatePlayerTextDraw(playerid, 114.000000, 101.000000, "Preview_Model");
+    PlayerTextDrawFont(playerid, bestPlayerSkinBox[playerid], 5);
+    PlayerTextDrawLetterSize(playerid, bestPlayerSkinBox[playerid], 0.600000, 2.000000);
+    PlayerTextDrawTextSize(playerid, bestPlayerSkinBox[playerid], 162.500000, 223.000000);
+    PlayerTextDrawSetOutline(playerid, bestPlayerSkinBox[playerid], 0);
+    PlayerTextDrawSetShadow(playerid, bestPlayerSkinBox[playerid], 0);
+    PlayerTextDrawAlignment(playerid, bestPlayerSkinBox[playerid], 1);
+    PlayerTextDrawColor(playerid, bestPlayerSkinBox[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, bestPlayerSkinBox[playerid], -2686851);
+    PlayerTextDrawBoxColor(playerid, bestPlayerSkinBox[playerid], 255);
+    PlayerTextDrawUseBox(playerid, bestPlayerSkinBox[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, bestPlayerSkinBox[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, bestPlayerSkinBox[playerid], 0);
+    PlayerTextDrawSetPreviewModel(playerid, bestPlayerSkinBox[playerid], 3);
+    PlayerTextDrawSetPreviewRot(playerid, bestPlayerSkinBox[playerid], -10.000000, 0.000000, -13.000000, 1.000000);
+    PlayerTextDrawSetPreviewVehCol(playerid, bestPlayerSkinBox[playerid], 1, 1);
 
-//             new playerKDA = playerKills - playerDeaths;
-//             playersStats[playerid][igId] = playerid;
-//             playersStats[playerid][kda] = playerKDA;
-//         }
-//     }
-//     playersStats[2][igId] = 2;
-//     playersStats[2][kda] = 32;
-//     playersStats[4][igId] = 4;
-//     playersStats[4][kda] = 64;
-//     playersStats[1][igId] = 1;
-//     playersStats[1][kda] = 54;
-//     playersStats[20][igId] = 20;
-//     playersStats[20][kda] = 213;
+    bestPlayerText[playerid] = CreatePlayerTextDraw(playerid, 119.000000, 85.000000, "Cel mai bun jucator");
+    PlayerTextDrawFont(playerid, bestPlayerText[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, bestPlayerText[playerid], 0.474999, 2.000000);
+    PlayerTextDrawTextSize(playerid, bestPlayerText[playerid], 374.500000, 7.000000);
+    PlayerTextDrawSetOutline(playerid, bestPlayerText[playerid], 1);
+    PlayerTextDrawSetShadow(playerid, bestPlayerText[playerid], 0);
+    PlayerTextDrawAlignment(playerid, bestPlayerText[playerid], 1);
+    PlayerTextDrawColor(playerid, bestPlayerText[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, bestPlayerText[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, bestPlayerText[playerid], 50);
+    PlayerTextDrawUseBox(playerid, bestPlayerText[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, bestPlayerText[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, bestPlayerText[playerid], 0);
 
-//     new maxNumber = playersStats[0][kda];
-//     new idPlayer;
-//     for (new x = 1; x < MAX_PLAYERS; x++) {
-//         if (playersStats[x][kda] > maxNumber) {
-//             maxNumber = playersStats[x][kda];
-//             idPlayer = playersStats[x][igId];
-//         }
-//     }
-//     new returnData[2];
-//     returnData[0] = idPlayer;
-//     returnData[1] = maxNumber;
-//     return returnData;
-// }
+    bestPlayerName[playerid] = CreatePlayerTextDraw(playerid, 194.000000, 319.000000, "Nume player");
+    PlayerTextDrawFont(playerid, bestPlayerName[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, bestPlayerName[playerid], 0.600000, 2.000000);
+    PlayerTextDrawTextSize(playerid, bestPlayerName[playerid], 400.000000, 17.000000);
+    PlayerTextDrawSetOutline(playerid, bestPlayerName[playerid], 1);
+    PlayerTextDrawSetShadow(playerid, bestPlayerName[playerid], 0);
+    PlayerTextDrawAlignment(playerid, bestPlayerName[playerid], 2);
+    PlayerTextDrawColor(playerid, bestPlayerName[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, bestPlayerName[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, bestPlayerName[playerid], 50);
+    PlayerTextDrawUseBox(playerid, bestPlayerName[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, bestPlayerName[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, bestPlayerName[playerid], 0);
 
-calculateWorstPlayer() {
-    new playersStats[MAX_PLAYERS];
-
-    new j = GetPlayerPoolSize();
-    for (new playerid = 0; i <= j; i++) {
-        if (GetPlayerVirtualWorld(playerid) == 2) {
-            new playerKills = playerWarKills[playerid];
-            new playerDeaths = playerWarDeaths[playerid];
-
-            new playerKDA = playerKills - playerDeaths;
-            playersStats[playerid] = playerKDA;
-        }
-    }
-
-    new maxNumber = playersStats[0];
-    for (new k = 1, k < MAX_PLAYERS; k++) {
-        if (playersStats[k] > maxNumber) {
-            maxNumber = playersStats[k];
-        }
-    }
-}
-
-// add loop to show for all players
-showBestPlayer() {
-    // bestBox[playerid] = CreatePlayerTextDraw(playerid, 195.000000, 89.000000, "_");
-    // PlayerTextDrawFont(playerid, bestBox[playerid], 1);
-    // PlayerTextDrawLetterSize(playerid, bestBox[playerid], 0.675000, 29.200008);
-    // PlayerTextDrawTextSize(playerid, bestBox[playerid], 303.500000, 190.000000);
-    // PlayerTextDrawSetOutline(playerid, bestBox[playerid], 1);
-    // PlayerTextDrawSetShadow(playerid, bestBox[playerid], 0);
-    // PlayerTextDrawAlignment(playerid, bestBox[playerid], 2);
-    // PlayerTextDrawColor(playerid, bestBox[playerid], -1);
-    // PlayerTextDrawBackgroundColor(playerid, bestBox[playerid], 255);
-    // PlayerTextDrawBoxColor(playerid, bestBox[playerid], -121);
-    // PlayerTextDrawUseBox(playerid, bestBox[playerid], 1);
-    // PlayerTextDrawSetProportional(playerid, bestBox[playerid], 1);
-    // PlayerTextDrawSetSelectable(playerid, bestBox[playerid], 0);
-
-    // bestPlayerSkinBox[playerid] = CreatePlayerTextDraw(playerid, 114.000000, 101.000000, "Preview_Model");
-    // PlayerTextDrawFont(playerid, bestPlayerSkinBox[playerid], 5);
-    // PlayerTextDrawLetterSize(playerid, bestPlayerSkinBox[playerid], 0.600000, 2.000000);
-    // PlayerTextDrawTextSize(playerid, bestPlayerSkinBox[playerid], 162.500000, 223.000000);
-    // PlayerTextDrawSetOutline(playerid, bestPlayerSkinBox[playerid], 0);
-    // PlayerTextDrawSetShadow(playerid, bestPlayerSkinBox[playerid], 0);
-    // PlayerTextDrawAlignment(playerid, bestPlayerSkinBox[playerid], 1);
-    // PlayerTextDrawColor(playerid, bestPlayerSkinBox[playerid], -1);
-    // PlayerTextDrawBackgroundColor(playerid, bestPlayerSkinBox[playerid], -2686851);
-    // PlayerTextDrawBoxColor(playerid, bestPlayerSkinBox[playerid], 255);
-    // PlayerTextDrawUseBox(playerid, bestPlayerSkinBox[playerid], 0);
-    // PlayerTextDrawSetProportional(playerid, bestPlayerSkinBox[playerid], 1);
-    // PlayerTextDrawSetSelectable(playerid, bestPlayerSkinBox[playerid], 0);
-    // PlayerTextDrawSetPreviewModel(playerid, bestPlayerSkinBox[playerid], 3);
-    // PlayerTextDrawSetPreviewRot(playerid, bestPlayerSkinBox[playerid], -10.000000, 0.000000, -13.000000, 1.000000);
-    // PlayerTextDrawSetPreviewVehCol(playerid, bestPlayerSkinBox[playerid], 1, 1);
-
-    // bestPlayerText[playerid] = CreatePlayerTextDraw(playerid, 119.000000, 85.000000, "Cel mai bun jucator");
-    // PlayerTextDrawFont(playerid, bestPlayerText[playerid], 1);
-    // PlayerTextDrawLetterSize(playerid, bestPlayerText[playerid], 0.474999, 2.000000);
-    // PlayerTextDrawTextSize(playerid, bestPlayerText[playerid], 374.500000, 7.000000);
-    // PlayerTextDrawSetOutline(playerid, bestPlayerText[playerid], 1);
-    // PlayerTextDrawSetShadow(playerid, bestPlayerText[playerid], 0);
-    // PlayerTextDrawAlignment(playerid, bestPlayerText[playerid], 1);
-    // PlayerTextDrawColor(playerid, bestPlayerText[playerid], -1);
-    // PlayerTextDrawBackgroundColor(playerid, bestPlayerText[playerid], 255);
-    // PlayerTextDrawBoxColor(playerid, bestPlayerText[playerid], 50);
-    // PlayerTextDrawUseBox(playerid, bestPlayerText[playerid], 0);
-    // PlayerTextDrawSetProportional(playerid, bestPlayerText[playerid], 1);
-    // PlayerTextDrawSetSelectable(playerid, bestPlayerText[playerid], 0);
-
-    // bestPlayerName[playerid] = CreatePlayerTextDraw(playerid, 194.000000, 319.000000, "Danix43");
-    // PlayerTextDrawFont(playerid, bestPlayerName[playerid], 1);
-    // PlayerTextDrawLetterSize(playerid, bestPlayerName[playerid], 0.600000, 2.000000);
-    // PlayerTextDrawTextSize(playerid, bestPlayerName[playerid], 400.000000, 17.000000);
-    // PlayerTextDrawSetOutline(playerid, bestPlayerName[playerid], 1);
-    // PlayerTextDrawSetShadow(playerid, bestPlayerName[playerid], 0);
-    // PlayerTextDrawAlignment(playerid, bestPlayerName[playerid], 2);
-    // PlayerTextDrawColor(playerid, bestPlayerName[playerid], -1);
-    // PlayerTextDrawBackgroundColor(playerid, bestPlayerName[playerid], 255);
-    // PlayerTextDrawBoxColor(playerid, bestPlayerName[playerid], 50);
-    // PlayerTextDrawUseBox(playerid, bestPlayerName[playerid], 0);
-    // PlayerTextDrawSetProportional(playerid, bestPlayerName[playerid], 1);
-    // PlayerTextDrawSetSelectable(playerid, bestPlayerName[playerid], 0);
-
-    // bestPlayerStats[playerid] = CreatePlayerTextDraw(playerid, 119.000000, 337.000000, "Ucideri: 23 - Morti: 1");
-    // PlayerTextDrawFont(playerid, bestPlayerStats[playerid], 1);
-    // PlayerTextDrawLetterSize(playerid, bestPlayerStats[playerid], 0.433333, 1.500000);
-    // PlayerTextDrawTextSize(playerid, bestPlayerStats[playerid], 400.000000, 17.000000);
-    // PlayerTextDrawSetOutline(playerid, bestPlayerStats[playerid], 1);
-    // PlayerTextDrawSetShadow(playerid, bestPlayerStats[playerid], 0);
-    // PlayerTextDrawAlignment(playerid, bestPlayerStats[playerid], 1);
-    // PlayerTextDrawColor(playerid, bestPlayerStats[playerid], -1);
-    // PlayerTextDrawBackgroundColor(playerid, bestPlayerStats[playerid], 255);
-    // PlayerTextDrawBoxColor(playerid, bestPlayerStats[playerid], 50);
-    // PlayerTextDrawUseBox(playerid, bestPlayerStats[playerid], 0);
-    // PlayerTextDrawSetProportional(playerid, bestPlayerStats[playerid], 1);
-    // PlayerTextDrawSetSelectable(playerid, bestPlayerStats[playerid], 0);
+    bestPlayerStats[playerid] = CreatePlayerTextDraw(playerid, 119.000000, 337.000000, "Sample KDA");
+    PlayerTextDrawFont(playerid, bestPlayerStats[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, bestPlayerStats[playerid], 0.433333, 1.500000);
+    PlayerTextDrawTextSize(playerid, bestPlayerStats[playerid], 400.000000, 17.000000);
+    PlayerTextDrawSetOutline(playerid, bestPlayerStats[playerid], 1);
+    PlayerTextDrawSetShadow(playerid, bestPlayerStats[playerid], 0);
+    PlayerTextDrawAlignment(playerid, bestPlayerStats[playerid], 1);
+    PlayerTextDrawColor(playerid, bestPlayerStats[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, bestPlayerStats[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, bestPlayerStats[playerid], 50);
+    PlayerTextDrawUseBox(playerid, bestPlayerStats[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, bestPlayerStats[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, bestPlayerStats[playerid], 0);
 
     enum stats {
         id,
@@ -981,14 +976,14 @@ showBestPlayer() {
     new playersStats[MAX_PLAYERS][stats];
 
     new j = GetPlayerPoolSize();
-    for (new playerid = 0; playerid <= j; playerid++) {
-        if (GetPlayerVirtualWorld(playerid) == 2) {
-            new playerKills = playerWarKills[playerid];
-            new playerDeaths = playerWarDeaths[playerid];
+    for (new loopPlayerId = 0; loopPlayerId <= j; loopPlayerId++) {
+        if (GetPlayerVirtualWorld(loopPlayerId) == 2) {
+            new playerKills = playerWarKills[loopPlayerId];
+            new playerDeaths = playerWarDeaths[loopPlayerId];
 
             new playerKDA = playerKills - playerDeaths;
-            playersStats[playerid][kda] = playerKDA;
-            playersStats[playerid][id] = playerid;
+            playersStats[loopPlayerId][kda] = playerKDA;
+            playersStats[loopPlayerId][id] = loopPlayerId;
         }
     }
 
@@ -1001,82 +996,100 @@ showBestPlayer() {
             bestMemberId = playersStats[x][id];
         }
     }
+
+    new playerName[30];
+    GetPlayerName(bestMemberId, playerName, sizeof(playerName));
+    PlayerTextDrawSetString(playerid, bestPlayerName[playerid], playerName);
+
+    new playerSkin;
+    playerSkin = GetPlayerSkin(bestMemberId);
+    PlayerTextDrawSetPreviewModel(playerid, bestPlayerSkinBox[playerid], playerSkin);
+
+    new playerKDAText[25];
+    format(playerKDAText, sizeof(playerKDAText), "Cel mai bun scor: %d", bestMemberKda);
+    PlayerTextDrawSetString(playerid, bestPlayerStats[playerid], playerKDAText);
+
+    PlayerTextDrawShow(playerid, bestBox[playerid]);
+    PlayerTextDrawShow(playerid, bestPlayerSkinBox[playerid]);
+    PlayerTextDrawShow(playerid, bestPlayerText[playerid]);
+    PlayerTextDrawShow(playerid, bestPlayerName[playerid]);
+    PlayerTextDrawShow(playerid, bestPlayerStats[playerid]);
 }
 
-// add loop to show for all players
-showWorstPlayer() {
-    // worstBox[playerid] = CreatePlayerTextDraw(playerid, 435.000000, 89.000000, "_");
-    // PlayerTextDrawFont(playerid, worstBox[playerid], 1);
-    // PlayerTextDrawLetterSize(playerid, worstBox[playerid], 0.675000, 29.200008);
-    // PlayerTextDrawTextSize(playerid, worstBox[playerid], 303.500000, 190.000000);
-    // PlayerTextDrawSetOutline(playerid, worstBox[playerid], 1);
-    // PlayerTextDrawSetShadow(playerid, worstBox[playerid], 0);
-    // PlayerTextDrawAlignment(playerid, worstBox[playerid], 2);
-    // PlayerTextDrawColor(playerid, worstBox[playerid], -1);
-    // PlayerTextDrawBackgroundColor(playerid, worstBox[playerid], 1097458175);
-    // PlayerTextDrawBoxColor(playerid, worstBox[playerid], 135);
-    // PlayerTextDrawUseBox(playerid, worstBox[playerid], 1);
-    // PlayerTextDrawSetProportional(playerid, worstBox[playerid], 1);
-    // PlayerTextDrawSetSelectable(playerid, worstBox[playerid], 0);
+showWorstPlayer(playerid) {
+    worstBox[playerid] = CreatePlayerTextDraw(playerid, 435.000000, 89.000000, "_");
+    PlayerTextDrawFont(playerid, worstBox[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, worstBox[playerid], 0.675000, 29.200008);
+    PlayerTextDrawTextSize(playerid, worstBox[playerid], 303.500000, 190.000000);
+    PlayerTextDrawSetOutline(playerid, worstBox[playerid], 1);
+    PlayerTextDrawSetShadow(playerid, worstBox[playerid], 0);
+    PlayerTextDrawAlignment(playerid, worstBox[playerid], 2);
+    PlayerTextDrawColor(playerid, worstBox[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, worstBox[playerid], 1097458175);
+    PlayerTextDrawBoxColor(playerid, worstBox[playerid], 135);
+    PlayerTextDrawUseBox(playerid, worstBox[playerid], 1);
+    PlayerTextDrawSetProportional(playerid, worstBox[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, worstBox[playerid], 0);
 
-    // worstPlayerSkinBox[playerid] = CreatePlayerTextDraw(playerid, 354.000000, 101.000000, "Preview_Model");
-    // PlayerTextDrawFont(playerid, worstPlayerSkinBox[playerid], 5);
-    // PlayerTextDrawLetterSize(playerid, worstPlayerSkinBox[playerid], 0.600000, 2.000000);
-    // PlayerTextDrawTextSize(playerid, worstPlayerSkinBox[playerid], 162.500000, 223.000000);
-    // PlayerTextDrawSetOutline(playerid, worstPlayerSkinBox[playerid], 0);
-    // PlayerTextDrawSetShadow(playerid, worstPlayerSkinBox[playerid], 0);
-    // PlayerTextDrawAlignment(playerid, worstPlayerSkinBox[playerid], 1);
-    // PlayerTextDrawColor(playerid, worstPlayerSkinBox[playerid], -1);
-    // PlayerTextDrawBackgroundColor(playerid, worstPlayerSkinBox[playerid], -16777091);
-    // PlayerTextDrawBoxColor(playerid, worstPlayerSkinBox[playerid], 255);
-    // PlayerTextDrawUseBox(playerid, worstPlayerSkinBox[playerid], 0);
-    // PlayerTextDrawSetProportional(playerid, worstPlayerSkinBox[playerid], 1);
-    // PlayerTextDrawSetSelectable(playerid, worstPlayerSkinBox[playerid], 0);
-    // PlayerTextDrawSetPreviewModel(playerid, worstPlayerSkinBox[playerid], 3);
-    // PlayerTextDrawSetPreviewRot(playerid, worstPlayerSkinBox[playerid], -10.000000, 0.000000, -13.000000, 1.000000);
-    // PlayerTextDrawSetPreviewVehCol(playerid, worstPlayerSkinBox[playerid], 0, 1);
+    worstPlayerSkinBox[playerid] = CreatePlayerTextDraw(playerid, 354.000000, 101.000000, "Preview_Model");
+    PlayerTextDrawFont(playerid, worstPlayerSkinBox[playerid], 5);
+    PlayerTextDrawLetterSize(playerid, worstPlayerSkinBox[playerid], 0.600000, 2.000000);
+    PlayerTextDrawTextSize(playerid, worstPlayerSkinBox[playerid], 162.500000, 223.000000);
+    PlayerTextDrawSetOutline(playerid, worstPlayerSkinBox[playerid], 0);
+    PlayerTextDrawSetShadow(playerid, worstPlayerSkinBox[playerid], 0);
+    PlayerTextDrawAlignment(playerid, worstPlayerSkinBox[playerid], 1);
+    PlayerTextDrawColor(playerid, worstPlayerSkinBox[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, worstPlayerSkinBox[playerid], -16777091);
+    PlayerTextDrawBoxColor(playerid, worstPlayerSkinBox[playerid], 255);
+    PlayerTextDrawUseBox(playerid, worstPlayerSkinBox[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, worstPlayerSkinBox[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, worstPlayerSkinBox[playerid], 0);
+    PlayerTextDrawSetPreviewModel(playerid, worstPlayerSkinBox[playerid], 3);
+    PlayerTextDrawSetPreviewRot(playerid, worstPlayerSkinBox[playerid], -10.000000, 0.000000, -13.000000, 1.000000);
+    PlayerTextDrawSetPreviewVehCol(playerid, worstPlayerSkinBox[playerid], 0, 1);
 
-    // worstPlayerText[playerid] = CreatePlayerTextDraw(playerid, 522.000000, 85.000000, "Cel mai prost jucator");
-    // PlayerTextDrawFont(playerid, worstPlayerText[playerid], 1);
-    // PlayerTextDrawLetterSize(playerid, worstPlayerText[playerid], 0.474999, 2.000000);
-    // PlayerTextDrawTextSize(playerid, worstPlayerText[playerid], 374.500000, 7.000000);
-    // PlayerTextDrawSetOutline(playerid, worstPlayerText[playerid], 1);
-    // PlayerTextDrawSetShadow(playerid, worstPlayerText[playerid], 0);
-    // PlayerTextDrawAlignment(playerid, worstPlayerText[playerid], 3);
-    // PlayerTextDrawColor(playerid, worstPlayerText[playerid], -1);
-    // PlayerTextDrawBackgroundColor(playerid, worstPlayerText[playerid], 255);
-    // PlayerTextDrawBoxColor(playerid, worstPlayerText[playerid], 50);
-    // PlayerTextDrawUseBox(playerid, worstPlayerText[playerid], 0);
-    // PlayerTextDrawSetProportional(playerid, worstPlayerText[playerid], 1);
-    // PlayerTextDrawSetSelectable(playerid, worstPlayerText[playerid], 0);
+    worstPlayerText[playerid] = CreatePlayerTextDraw(playerid, 522.000000, 85.000000, "Cel mai prost jucator");
+    PlayerTextDrawFont(playerid, worstPlayerText[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, worstPlayerText[playerid], 0.474999, 2.000000);
+    PlayerTextDrawTextSize(playerid, worstPlayerText[playerid], 374.500000, 7.000000);
+    PlayerTextDrawSetOutline(playerid, worstPlayerText[playerid], 1);
+    PlayerTextDrawSetShadow(playerid, worstPlayerText[playerid], 0);
+    PlayerTextDrawAlignment(playerid, worstPlayerText[playerid], 3);
+    PlayerTextDrawColor(playerid, worstPlayerText[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, worstPlayerText[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, worstPlayerText[playerid], 50);
+    PlayerTextDrawUseBox(playerid, worstPlayerText[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, worstPlayerText[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, worstPlayerText[playerid], 0);
 
-    // worstPlayerName[playerid] = CreatePlayerTextDraw(playerid, 436.000000, 319.000000, "Danix43");
-    // PlayerTextDrawFont(playerid, worstPlayerName[playerid], 1);
-    // PlayerTextDrawLetterSize(playerid, worstPlayerName[playerid], 0.600000, 2.000000);
-    // PlayerTextDrawTextSize(playerid, worstPlayerName[playerid], 400.000000, 17.000000);
-    // PlayerTextDrawSetOutline(playerid, worstPlayerName[playerid], 1);
-    // PlayerTextDrawSetShadow(playerid, worstPlayerName[playerid], 0);
-    // PlayerTextDrawAlignment(playerid, worstPlayerName[playerid], 2);
-    // PlayerTextDrawColor(playerid, worstPlayerName[playerid], -1);
-    // PlayerTextDrawBackgroundColor(playerid, worstPlayerName[playerid], 255);
-    // PlayerTextDrawBoxColor(playerid, worstPlayerName[playerid], 50);
-    // PlayerTextDrawUseBox(playerid, worstPlayerName[playerid], 0);
-    // PlayerTextDrawSetProportional(playerid, worstPlayerName[playerid], 1);
-    // PlayerTextDrawSetSelectable(playerid, worstPlayerName[playerid], 0);
+    worstPlayerName[playerid] = CreatePlayerTextDraw(playerid, 436.000000, 319.000000, "Danix43");
+    PlayerTextDrawFont(playerid, worstPlayerName[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, worstPlayerName[playerid], 0.600000, 2.000000);
+    PlayerTextDrawTextSize(playerid, worstPlayerName[playerid], 400.000000, 17.000000);
+    PlayerTextDrawSetOutline(playerid, worstPlayerName[playerid], 1);
+    PlayerTextDrawSetShadow(playerid, worstPlayerName[playerid], 0);
+    PlayerTextDrawAlignment(playerid, worstPlayerName[playerid], 2);
+    PlayerTextDrawColor(playerid, worstPlayerName[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, worstPlayerName[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, worstPlayerName[playerid], 50);
+    PlayerTextDrawUseBox(playerid, worstPlayerName[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, worstPlayerName[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, worstPlayerName[playerid], 0);
 
-    // worstPlayerStats[playerid] = CreatePlayerTextDraw(playerid, 517.000000, 337.000000, "Ucideri: 23 - Morti: 1");
-    // PlayerTextDrawFont(playerid, worstPlayerStats[playerid], 1);
-    // PlayerTextDrawLetterSize(playerid, worstPlayerStats[playerid], 0.433333, 1.500000);
-    // PlayerTextDrawTextSize(playerid, worstPlayerStats[playerid], 400.000000, 17.000000);
-    // PlayerTextDrawSetOutline(playerid, worstPlayerStats[playerid], 1);
-    // PlayerTextDrawSetShadow(playerid, worstPlayerStats[playerid], 0);
-    // PlayerTextDrawAlignment(playerid, worstPlayerStats[playerid], 3);
-    // PlayerTextDrawColor(playerid, worstPlayerStats[playerid], -1);
-    // PlayerTextDrawBackgroundColor(playerid, worstPlayerStats[playerid], 255);
-    // PlayerTextDrawBoxColor(playerid, worstPlayerStats[playerid], 50);
-    // PlayerTextDrawUseBox(playerid, worstPlayerStats[playerid], 0);
-    // PlayerTextDrawSetProportional(playerid, worstPlayerStats[playerid], 1);
-    // PlayerTextDrawSetSelectable(playerid, worstPlayerStats[playerid], 0);
+    worstPlayerStats[playerid] = CreatePlayerTextDraw(playerid, 517.000000, 337.000000, "Ucideri: 23 - Morti: 1");
+    PlayerTextDrawFont(playerid, worstPlayerStats[playerid], 1);
+    PlayerTextDrawLetterSize(playerid, worstPlayerStats[playerid], 0.433333, 1.500000);
+    PlayerTextDrawTextSize(playerid, worstPlayerStats[playerid], 400.000000, 17.000000);
+    PlayerTextDrawSetOutline(playerid, worstPlayerStats[playerid], 1);
+    PlayerTextDrawSetShadow(playerid, worstPlayerStats[playerid], 0);
+    PlayerTextDrawAlignment(playerid, worstPlayerStats[playerid], 3);
+    PlayerTextDrawColor(playerid, worstPlayerStats[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, worstPlayerStats[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, worstPlayerStats[playerid], 50);
+    PlayerTextDrawUseBox(playerid, worstPlayerStats[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, worstPlayerStats[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, worstPlayerStats[playerid], 0);
+
     enum stats {
         id,
         kda
@@ -1085,14 +1098,14 @@ showWorstPlayer() {
     new playersStats[MAX_PLAYERS][stats];
 
     new j = GetPlayerPoolSize();
-    for (new playerid = 0; playerid <= j; playerid++) {
-        if (GetPlayerVirtualWorld(playerid) == 2) {
-            new playerKills = playerWarKills[playerid];
-            new playerDeaths = playerWarDeaths[playerid];
+    for (new loopPlayerId = 0; loopPlayerId <= j; loopPlayerId++) {
+        if (GetPlayerVirtualWorld(loopPlayerId) == 2) {
+            new playerKills = playerWarKills[loopPlayerId];
+            new playerDeaths = playerWarDeaths[loopPlayerId];
 
             new playerKDA = playerKills - playerDeaths;
-            playersStats[playerid][kda] = playerKDA;
-            playersStats[playerid][id] = playerid;
+            playersStats[loopPlayerId][kda] = playerKDA;
+            playersStats[loopPlayerId][id] = loopPlayerId;
         }
     }
 
@@ -1105,6 +1118,24 @@ showWorstPlayer() {
             worstMemberId = playersStats[x][id];
         }
     }
+
+    new playerName[30];
+    GetPlayerName(worstMemberId, playerName, sizeof(playerName));
+    PlayerTextDrawSetString(playerid, worstPlayerName[playerid], playerName);
+
+    new playerSkin;
+    playerSkin = GetPlayerSkin(worstMemberId);
+    PlayerTextDrawSetPreviewModel(playerid, worstPlayerSkinBox[playerid], playerSkin);
+
+    new playerKDAText[25];
+    format(playerKDAText, sizeof(playerKDAText), "Cel mai prost scor: %d", worstMemberKda);
+    PlayerTextDrawSetString(playerid, worstPlayerStats[playerid], playerKDAText);
+
+    PlayerTextDrawShow(playerid, worstBox[playerid]);
+    PlayerTextDrawShow(playerid, worstPlayerSkinBox[playerid]);
+    PlayerTextDrawShow(playerid, worstPlayerText[playerid]);
+    PlayerTextDrawShow(playerid, worstPlayerName[playerid]);
+    PlayerTextDrawShow(playerid, worstPlayerStats[playerid]);
 }
 
 new influenceTimer;
@@ -1137,25 +1168,30 @@ startWar(const turf_id[], attackerid) {
     SetSVarInt("pointsSP", 0);
 
     SetSVarString("isWarOn", "true");
+    SetSVarInt("warWinner", 0);
 
     // prod
-    // influenceTimer = SetTimer("pointFromInfluence", 37500, true);
-    // roundTimer = SetTimer("advanceRound", 150000, true);
+    influenceTimer = SetTimer("pointFromInfluence", 37500, true);
+    roundTimer = SetTimer("advanceRound", 150000, true);
 
-    // endWarTimer = SetTimer("endWar", 2250000, false);
+    endWarTimer = SetTimer("endWar", 2250000, false);
 
     // dev
-    influenceTimer = SetTimer("pointFromInfluence", 10000, true);
-    roundTimer = SetTimer("advanceRound", 20000, true);
+    // influenceTimer = SetTimer("pointFromInfluence", 10000, true);
+    // roundTimer = SetTimer("advanceRound", 20000, true);
 
-    endWarTimer = SetTimer("endWar", 60000, false);
+    // endWarTimer = SetTimer("endWar", 60000, false);
 }
 
 forward advanceRound();
 public advanceRound() {
     new rdtRounds = GetSVarInt("roundsRDT");
     new spRounds = GetSVarInt("roundsSP");
-    if (rdtRounds >= 8 || spRounds >= 8) {
+    if (rdtRounds >= 8) {
+        SetSVarInt("warWinner", RDT);
+        endWar();
+    } else if (spRounds >= 8) {
+        SetSVarInt("warWinner", SP);
         endWar();
     }
 
@@ -1216,9 +1252,6 @@ public pointFromInfluence() {
 }
 
 endWar() {
-    // showBestPlayer();
-    // showWorstPlayer();
-
     // hide text draws
     new j = GetPlayerPoolSize();
     for (new i = 0; i <= j; i++) {
@@ -1230,6 +1263,10 @@ endWar() {
             PlayerTextDrawHide(i, PlayerText:warCurrentPoints[i]);
             PlayerTextDrawHide(i, PlayerText:warPlayersOnTurf[i]);
             PlayerTextDrawHide(i, PlayerText:warPlayerStats[i]);
+
+            // showBestPlayer(i);
+            // showWorstPlayer(i);
+
             playerWarKills[i] = 0;
             playerWarDeaths[i] = 0;
             SetPlayerVirtualWorld(i, 0);
@@ -1238,23 +1275,64 @@ endWar() {
     new warTurfId = GetSVarInt("warTurf");
     ZoneStopFlashForAll(warTurfId);
     SetSVarString("isWarOn", "false");
+
+    new warWinner = GetSVarInt("warWinner");
+    checkTurfWarOwner(warWinner);
+    loadTurfs();
+
     KillTimer(influenceTimer);
     KillTimer(endWarTimer);
     KillTimer(roundTimer);
+
+    clearKillList();
     SendClientMessageToAll(COLOR_BLUE, "War-ul s-a incheiat");
+}
+
+checkTurfWarOwner(winnerMafia) {
+    new warTurf = GetSVarInt("warTurf");
+
+    new message[100];
+    new oldOwner = turfs[warTurf][owner];
+    new opposedMafia = getTurfOpposedFaction(oldOwner);
+    if (oldOwner == winnerMafia) {
+        format(message, sizeof(message), "Mafia %s a reusit sa apere turf-ul cu numarul %d, fiind atacati de catre %s!", oldOwner, warTurf, opposedMafia);
+        SendClientMessageToAll(COLOR_GREEN, message);
+    } else {
+        format(message, sizeof(message), "Mafia %s a reusit sa cucereasca turf-ul cu numarul %d de la mafia %s!", opposedMafia, warTurf, oldOwner);
+        SendClientMessageToAll(COLOR_GREEN, message);
+
+        new query[100];
+        format(query, sizeof(query), "UPDATE Turfs SET owner = %d WHERE turf_id = %d", opposedMafia, warTurf);
+
+        new DBResult:queryResult = db_query(connection, query);
+        if (db_num_rows(queryResult) == 1) {
+            print("turf owner update successful");
+        } else {
+            print("turf owner update failed");
+        }
+        db_free_result(queryResult);
+    }
+}
+
+clearKillList() {
+    SendDeathMessage(0, 0, 0);
+    SendDeathMessage(0, 0, 0);
+    SendDeathMessage(0, 0, 0);
+    SendDeathMessage(0, 0, 0);
+    SendDeathMessage(0, 0, 0);
 }
 
 // ----------------------- COMMANDS ----------------------- 
 
-COMMAND:setskin(playerid, params[]) {
-    new skinid;
-    if (sscanf(params, "i", skinid)) {
-        SendClientMessage(playerid, -1, "Foloseste: /setskin [skinid]");
-    } else {
-        SetPlayerSkin(playerid, skinid);
-    }
-    return 1;
-}
+// COMMAND:setskin(playerid, params[]) {
+//     new skinid;
+//     if (sscanf(params, "i", skinid)) {
+//         SendClientMessage(playerid, -1, "Foloseste: /setskin [skinid]");
+//     } else {
+//         SetPlayerSkin(playerid, skinid);
+//     }
+//     return 1;
+// }
 
 COMMAND:help(playerid) {
     SendClientMessage(playerid, 0xF5E342FF, "Comenzi disponibile: ");
@@ -1273,6 +1351,14 @@ COMMAND:id(playerid, params[]) {
         SendClientMessage(playerid, COLOR_RED, "Foloseste: /id [id|nume player]");
     } else {
         SendClientMessage(playerid, COLOR_GREEN, "Inca nu s-a adaugat, asa ca asteapta in morti tai");
+    }
+    return 1;
+}
+
+COMMAND:fmembers(playerid, params[]) {
+    new playerMafia = GetPlayerTeam(playerid);
+    if (playerMafia == 255) {
+        return 1;
     }
     return 1;
 }
@@ -1301,18 +1387,18 @@ COMMAND:turfs(playerid, params[]) {
     return 1;
 }
 
-/*
- - attack a turf
- should be only 4 attacks on a sesh
-*/
 COMMAND:attack(playerid, params[]) {
-    new turfData[650];
-    turfData = loadDataForAttack(playerid);
+    if (getPlayerFactionRank(playerid) >= 5) {
+        new turfData[650];
+        turfData = loadDataForAttack(playerid);
 
-    OpenDialog(playerid, "attack", DIALOG_STYLE_TABLIST_HEADERS,
-        "Attack Menu",
-        turfData,
-        "Attack", "");
+        OpenDialog(playerid, "attack", DIALOG_STYLE_TABLIST_HEADERS,
+            "Attack Menu",
+            turfData,
+            "Attack", "");
+    } else {
+        SendClientMessage(playerid, COLOR_RED, "Nu ai rank-ul necesar pentru a lansa un atac!");
+    }
     return 1;
 }
 
@@ -1533,7 +1619,7 @@ COMMAND:rankup(playerid, params[]) {
         new giverRank = getPlayerFactionRank(playerid);
         new takerRank = getPlayerFactionRank(takerId);
         if (giverRank <= takerRank) {
-            SendClientMessage(playerid, COLOR_RED, "Nu poti da sa dai rank-up un rank superior!");
+            SendClientMessage(playerid, COLOR_RED, "Nu poti da sa dai rank-up unui rank superior!");
             return 1;
         }
         if (5 > giverRank) {
@@ -1558,7 +1644,7 @@ COMMAND:rankup(playerid, params[]) {
             SendClientMessage(takerId, COLOR_BLUE, messageTaker);
             new messageGiver[100];
             format(messageGiver, sizeof(messageGiver), "I-ai dat rank-ul: %d lui %s.", newPlayerRank, takerPlayerName);
-            SendClientMessage(takerId, COLOR_BLUE, messageGiver);
+            SendClientMessage(playerid, COLOR_BLUE, messageGiver);
         } else {
             print("update failed");
         }
@@ -1626,21 +1712,13 @@ COMMAND:rankdown(playerid, params[]) {
             SendClientMessage(takerId, COLOR_BLUE, messageTaker);
             new messageGiver[100];
             format(messageGiver, sizeof(messageGiver), "I-ai dat rank-ul: %d lui %s.", newPlayerRank, takerPlayerName);
-            SendClientMessage(takerId, COLOR_BLUE, messageGiver);
+            SendClientMessage(playerid, COLOR_BLUE, messageGiver);
         } else {
             print("update failed");
         }
     }
     return 1;
 }
-
-// order ranks 
-// rank 1:
-// rank 2:
-// rank 3:
-// rank 4:
-// rank 5:
-// rank 6:
 
 COMMAND:order1(playerid, params[]) {
     if (GetPlayerInterior(playerid) != 0) {
@@ -1651,7 +1729,7 @@ COMMAND:order1(playerid, params[]) {
 }
 
 COMMAND:order2(playerid, params[]) {
-    if (GetPlayerInterior(playerid) != 0) {
+    if (GetPlayerInterior(playerid) != 0 && getPlayerFactionRank(playerid) >= 2) {
         GivePlayerWeapon(playerid, 24, 150);
         GivePlayerWeapon(playerid, 31, 150);
         SendClientMessage(playerid, COLOR_BLUE, "Given order 2");
@@ -1660,7 +1738,7 @@ COMMAND:order2(playerid, params[]) {
 }
 
 COMMAND:order3(playerid, params[]) {
-    if (GetPlayerInterior(playerid) != 0) {
+    if (GetPlayerInterior(playerid) != 0 && getPlayerFactionRank(playerid) >= 3) {
         GivePlayerWeapon(playerid, 24, 150);
         GivePlayerWeapon(playerid, 31, 150);
         GivePlayerWeapon(playerid, 33, 150);
@@ -1670,7 +1748,7 @@ COMMAND:order3(playerid, params[]) {
 }
 
 COMMAND:order4(playerid, params[]) {
-    if (GetPlayerInterior(playerid) != 0) {
+    if (GetPlayerInterior(playerid) != 0 && getPlayerFactionRank(playerid) >= 4) {
         GivePlayerWeapon(playerid, 24, 150);
         GivePlayerWeapon(playerid, 31, 150);
         GivePlayerWeapon(playerid, 33, 150);
