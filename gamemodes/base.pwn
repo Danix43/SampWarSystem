@@ -26,8 +26,8 @@
 
 enum {
     COLOR_RED = 0xFF0000,
-        COLOR_GREEN = 0x7FFF00,
-        COLOR_BLUE = 0x0FFFFF,
+        COLOR_GREEN = 0x00FF00,
+        COLOR_BLUE = 0x0000FF,
         COLOR_PURPLE = 0x8A2BE2FF
 }
 
@@ -116,6 +116,8 @@ public OnGameModeInit() {
     SetGameModeText("War Between Mafia System");
     UsePlayerPedAnims();
     DisableInteriorEnterExits();
+    ShowPlayerMarkers(PLAYER_MARKERS_MODE_GLOBAL);
+
     setupRDT();
     setupSP();
 
@@ -273,7 +275,10 @@ public OnPlayerPickUpPickup(playerid, pickupid) {
         SendClientMessage(playerid, COLOR_GREEN, "Ai folosit un medkit de pe jos!");
         new Float:oldHp;
         GetPlayerHealth(playerid, oldHp);
-        SetPlayerHealth(playerid, (oldHp + 25));
+        if (oldHp < 75) {
+        } else {
+            SetPlayerHealth(playerid, (oldHp + 25));
+        }
     }
     return 1;
 }
@@ -471,6 +476,17 @@ getPlayerOpposedFaction(playerid) {
     return factionName;
 }
 
+getTurfOwnerName(turfOwner) {
+    new name[4];
+    name = "nul";
+    if (turfOwner == RDT) {
+        name = "RDT";
+    } else if (turfOwner == SP) {
+        name = "SP";
+    }
+    return name;
+}
+
 // turfOwner - should give the int of the faction
 getTurfOpposedFaction(turfOwner) {
     if (turfOwner == RDT) {
@@ -479,6 +495,17 @@ getTurfOpposedFaction(turfOwner) {
         return RDT;
     }
     return turfOwner;
+}
+
+getTurfOpposedFactionName(turfOwner) {
+    new name[4];
+    name = "nul";
+    if (turfOwner == RDT) {
+        name = "SP";
+    } else if (turfOwner == SP) {
+        name = "RDT";
+    }
+    return name;
 }
 
 createWeaponPickup(deadId) {
@@ -699,7 +726,7 @@ prepareTurf(turfIdForWar) {
         SetSVarFloat("poiY", db_get_field_assoc_float(result, "poiY"));
         SetSVarFloat("poiZ", db_get_field_assoc_float(result, "poiZ"));
 
-        ZoneFlashForAll(turfs[dbTurfNumber][turfId], -1);
+        ZoneFlashForAll(turfs[dbTurfNumber][turfId], 0xFFFFFF99);
     }
     db_free_result(result);
 }
@@ -1273,7 +1300,7 @@ endWar() {
         }
     }
     new warTurfId = GetSVarInt("warTurf");
-    ZoneStopFlashForAll(warTurfId);
+    ZoneStopFlashForAll(turfs[warTurfId][turfId]);
     SetSVarString("isWarOn", "false");
 
     new warWinner = GetSVarInt("warWinner");
@@ -1293,12 +1320,17 @@ checkTurfWarOwner(winnerMafia) {
 
     new message[100];
     new oldOwner = turfs[warTurf][owner];
+    new oldOwnerName[4];
+    oldOwnerName = getTurfOwnerName(oldOwner);
     new opposedMafia = getTurfOpposedFaction(oldOwner);
+    new opposedMafiaName[4];
+    opposedMafiaName = getTurfOpposedFactionName(oldOwner);
+
     if (oldOwner == winnerMafia) {
-        format(message, sizeof(message), "Mafia %s a reusit sa apere turf-ul cu numarul %d, fiind atacati de catre %s!", oldOwner, warTurf, opposedMafia);
+        format(message, sizeof(message), "Mafia %s a reusit sa apere turf-ul cu numarul %d, fiind atacati de catre %s!", oldOwnerName, warTurf, opposedMafiaName);
         SendClientMessageToAll(COLOR_GREEN, message);
     } else {
-        format(message, sizeof(message), "Mafia %s a reusit sa cucereasca turf-ul cu numarul %d de la mafia %s!", opposedMafia, warTurf, oldOwner);
+        format(message, sizeof(message), "Mafia %s a reusit sa cucereasca turf-ul cu numarul %d de la mafia %s!", opposedMafiaName, warTurf, oldOwnerName);
         SendClientMessageToAll(COLOR_GREEN, message);
 
         new query[100];
@@ -1315,11 +1347,11 @@ checkTurfWarOwner(winnerMafia) {
 }
 
 clearKillList() {
-    SendDeathMessage(0, 0, 0);
-    SendDeathMessage(0, 0, 0);
-    SendDeathMessage(0, 0, 0);
-    SendDeathMessage(0, 0, 0);
-    SendDeathMessage(0, 0, 0);
+    SendDeathMessage(100, 100, 0);
+    SendDeathMessage(100, 100, 0);
+    SendDeathMessage(100, 100, 0);
+    SendDeathMessage(100, 100, 0);
+    SendDeathMessage(100, 100, 0);
 }
 
 // ----------------------- COMMANDS ----------------------- 

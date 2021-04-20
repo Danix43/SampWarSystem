@@ -44,7 +44,7 @@
 		"sleep": 5,
 		"maxnpc": 0,
 		"stream_rate": 1000,
-		"stream_distance": 50,
+		"stream_distance": 200,
 		"onfoot_rate": 30,
 		"incar_rate": 30,
 		"weapon_rate": 30,
