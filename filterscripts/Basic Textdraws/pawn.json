@@ -1,0 +1,9 @@
+{
+	"user": "Danix43",
+	"repo": "BasicTextDraws",
+	"entry": "textdraws.pwn",
+	"output": "../textdraws.amx",
+	"dependencies": [
+		"sampctl/samp-stdlib"
+	]
+}
