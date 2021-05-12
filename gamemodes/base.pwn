@@ -3,6 +3,8 @@
 #define FIXES_GetMaxPlayersMsg 0
 
 #include <fixes> 
+#include <streamer>
+// #include "nex-ac"
 #include <izcmd>
 #include <sscanf2>
 #include <samp_bcrypt>
@@ -51,11 +53,20 @@ new players[MAX_PLAYERS][PlayerStats];
 enum Turf {
     id,
     owner,
-    name[30],
     Float:poiX,
     Float:poiY,
-    Float:poiZ
+    Float:poiZ,
+    name[30]
 }
+
+// warTextDraws
+new PlayerText:tdWarBox2[MAX_PLAYERS];
+new PlayerText:tdWarLocation[MAX_PLAYERS];
+new PlayerText:tdWarBox[MAX_PLAYERS];
+new PlayerText:tdWarScore[MAX_PLAYERS];
+new PlayerText:tdWarRoundsCount[MAX_PLAYERS];
+new PlayerText:tdWarOnTurf[MAX_PLAYERS];
+new PlayerText:tdWarStats[MAX_PLAYERS];
 
 // all turfs 
 new turfs[25][Turf];
@@ -83,6 +94,7 @@ main() {
     print("               v2.0                 ");
     print("         Made by Danix43            ");
     print("************************************");
+    return 1;
 }
 
 // -------------------- CALLBACKS --------------------
@@ -106,6 +118,7 @@ public OnGameModeInit() {
     connectToDb();
 
     loadTurfs();
+    return 1;
 }
 
 public OnGameModeExit() {
@@ -151,16 +164,13 @@ public OnPlayerConnect(playerid) {
 }
 
 public OnPlayerRequestClass(playerid, classid) {
-    new playerFaction, playerFactionRank;
     loadPlayerStats(playerid);
-    playerFaction = players[playerid][faction];
-    playerFactionRank = players[playerid][rank];
 
-    switch (playerFaction) {
+    switch (players[playerid][faction]) {
         case RDT:
-            putRDT(playerid, playerFactionRank);
+            putRDT(playerid, players[playerid][rank]);
         case SP:
-            putSP(playerid, playerFactionRank);
+            putSP(playerid, players[playerid][rank]);
         case CIVILIAN:
             putCivil(playerid);
     }
@@ -197,7 +207,8 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys) {
                 SetPlayerInterior(playerid, INTERIOR_RDT);
                 SetPlayerPos(playerid, -2638.8232, 1407.3395, 906.4609);
             }
-        } else if (!GetPlayerInterior(playerid) == 0) {
+        }
+        if (GetPlayerInterior(playerid) != 0) {
             // SP HQ
             if (GetPlayerInterior(playerid) == INTERIOR_SP && IsPlayerInRangeOfPoint(playerid, 2, 1727.0000, -1637.8649, 20.2230)) {
                 SetPlayerInterior(playerid, 0);
@@ -212,6 +223,67 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys) {
     }
     return 1;
 }
+
+public OnPlayerDeath(playerid, killerid, reason) {
+    new tdWarStatsText[30];
+    if (GetPlayerVirtualWorld(playerid) == 2 && GetPlayerVirtualWorld(killerid)) {
+        if (killerid != INVALID_PLAYER_ID) {
+            players[killerid][warKills]++;
+
+            players[playerid][warDeaths]++;
+
+            SendDeathMessage(killerid, playerid, reason);
+            pointFromKill(killerid);
+
+            format(tdWarStatsText, sizeof(tdWarStatsText), "Ucideri: %d Morti: %d", players[killerid][warKills], players[killerid][warDeaths]);
+            PlayerTextDrawSetString(killerid, PlayerText:tdWarStats[killerid], tdWarStatsText);
+            format(tdWarStatsText, sizeof(tdWarStatsText), "Ucideri: %d Morti: %d", players[playerid][warKills], players[playerid][warDeaths]);
+            PlayerTextDrawSetString(playerid, PlayerText:tdWarStats[playerid], tdWarStatsText);
+
+            createHealthDrop(playerid);
+            createWeaponDrop(playerid);
+        }
+    }
+    players[playerid][deaths]++;
+    if (killerid != INVALID_PLAYER_ID) {
+        players[killerid][kills]++;
+    }
+    return 1;
+}
+
+new healthDrops;
+new ammoDrops;
+public OnPlayerPickUpDynamicPickup(playerid, pickupid) {
+    if (pickupid == healthDrops) {
+        new Float:playerHp;
+        GetPlayerHealth(playerid, playerHp);
+
+        if (playerHp >= 25) {
+            SetPlayerHealth(playerid, 100);
+        } else {
+            SetPlayerHealth(playerid, (playerHp + 25));
+        }
+        SendClientMessage(playerid, COLOR_GREEN, "Ai gasit o pastila pe jos si ai primit 25 HP!");
+    } else if (pickupid == ammoDrops) {
+        for (new i = 0; i <= 12; i++) {
+            new weaponId, weaponAmmo;
+            GetPlayerWeaponData(playerid, i, weaponId, weaponAmmo);
+
+            if (weaponAmmo == 0) {
+                continue;
+            }
+            SetPlayerAmmo(playerid, weaponId, (weaponAmmo + 100));
+        }
+        SendClientMessage(playerid, COLOR_GREEN, "Ai gasit niste arme pe jos si ai luat 100 de gloante!");
+    }
+}
+
+// forward OnCheatDetected(playerid, ip_address[], type, code);
+// public OnCheatDetected(playerid, ip_address[], type, code) {
+//     new message[128];
+//     format(message, sizeof(message), "Jucatorul cu id: %d, cu adresa ip: %s, a folosit coduri: tip: %d, cod: %d", playerid, ip_address, type, code);
+//     SendClientMessageToAll(COLOR_RED, message);
+// }
 
 // -------------------- DB --------------------
 
@@ -272,31 +344,19 @@ loadPlayerStats(playerid) {
 
     new DBResult:queryResult = db_query(connection, query);
     if (db_num_rows(queryResult)) {
-        new playerFaction, factionRank;
-        new playerKills, playerDeaths, playerKda;
-        new playerBests, playerWorsts;
+        players[playerid][faction] = db_get_field_assoc_int(queryResult, "faction");
+        players[playerid][rank] = db_get_field_assoc_int(queryResult, "factionRank");
 
-        playerFaction = db_get_field_assoc_int(queryResult, "faction");
-        factionRank = db_get_field_assoc_int(queryResult, "factionRank");
+        players[playerid][kills] = db_get_field_assoc_int(queryResult, "kills");
+        players[playerid][deaths] = db_get_field_assoc_int(queryResult, "deaths");
+        players[playerid][kda] = players[playerid][kills] - players[playerid][deaths];
 
-        playerKills = db_get_field_assoc_int(queryResult, "kills");
-        playerDeaths = db_get_field_assoc_int(queryResult, "deaths");
-        playerKda = playerKills - playerDeaths;
-
-        playerBests = db_get_field_assoc_int(queryResult, "bests");
-        playerWorsts = db_get_field_assoc_int(queryResult, "worsts");
-
-        players[playerid][faction] = playerFaction;
-        players[playerid][rank] = factionRank;
-        players[playerid][kills] = playerKills;
-        players[playerid][deaths] = playerDeaths;
-        players[playerid][kda] = playerKda;
-        players[playerid][bests] = playerBests;
-        players[playerid][worsts] = playerWorsts;
+        players[playerid][bests] = db_get_field_assoc_int(queryResult, "bests");
+        players[playerid][worsts] = db_get_field_assoc_int(queryResult, "worsts");
 
         printf("loadPlayerStats data: faction: %d, rank: %d", players[playerid][faction], players[playerid][rank]);
 
-        SetPlayerTeam(playerid, playerFaction);
+        SetPlayerTeam(playerid, players[playerid][faction]);
 
     } else {
         // user might not exist
@@ -329,9 +389,14 @@ savePlayerStats(playerid) {
 forward globalSave();
 public globalSave() {
     for (new playerid = 0; playerid <= MAX_PLAYERS; playerid++) {
-        if (IsPlayerConnected(playerid) == true) {
+        if (IsPlayerConnected(playerid)) {
             savePlayerStats(playerid);
         }
+    }
+    new query[50];
+    for (new turf = 0; turf <= 23; turf++) {
+        format(query, sizeof(query), "UPDATE Turfs SET owner = %d where id = %d;", turfs[turf][owner], (turfs[turf][id] + 1));
+        db_free_result(db_query(connection, query));
     }
     SendClientMessageToAll(COLOR_GREEN, "Global save done");
 }
@@ -377,43 +442,33 @@ loadTurfs() {
 }
 
 loadDataForAttack(playerid) {
-    new query[100];
     new returnData[650];
 
     new headers[33];
     headers = "Turf Number\tTurf Name\tOwner\n";
     strcatmid(returnData, headers);
 
-    for (new turfId = 1; turfId <= 24; turfId++) {
-        format(query, sizeof(query), "SELECT number, name, owner FROM Turfs WHERE id = %d;", turfId);
+    for (new turfId = 0; turfId <= 23; turfId++) {
+        new turfOwner;
 
-        new DBResult:queryResult = db_query(connection, query);
-        new dbTurfNumber;
-        new turfName[15];
-        new dbTurfOwner;
+        turfOwner = turfs[turfId][owner];
 
-        dbTurfNumber = db_get_field_assoc_int(queryResult, "number");
-        db_get_field_assoc(queryResult, "name", turfName, sizeof(turfName));
-        dbTurfOwner = db_get_field_assoc_int(queryResult, "owner");
-
-        if (dbTurfOwner == GetPlayerTeam(playerid)) {
+        if (turfOwner == GetPlayerTeam(playerid)) {
             continue;
         }
 
-        new turfOwner[12];
-        if (dbTurfOwner == RDT) {
-            turfOwner = "{DE0000}RDT";
-        } else if (dbTurfOwner == SP) {
-            turfOwner = "{DE09DA}SP";
+        new displayTurfOwner[12];
+        if (turfOwner == RDT) {
+            displayTurfOwner = "{DE0000}RDT";
+        } else if (turfOwner == SP) {
+            displayTurfOwner = "{DE09DA}SP";
         } else {
-            printf("owner data not matching: %s", dbTurfOwner);
+            printf("owner data not matching: %s", displayTurfOwner);
         }
         new temp[60];
-        format(temp, sizeof(temp), "%d\t%s\t%s\n", dbTurfNumber, turfName, turfOwner);
+        format(temp, sizeof(temp), "%d\t%s\t%s\n", turfs[turfId][id], displayTurfOwner, turfs[turfId][name]);
 
         strcatmid(returnData, temp);
-
-        db_free_result(queryResult);
     }
     return returnData;
 }
@@ -643,18 +698,17 @@ getPlayerFactionRank(playerid) {
     return players[playerid][rank];
 }
 
-// getTurfOwnerName(turfOwner) {
-//     new name[4];
-//     name = "nul";
-//     if (turfOwner == RDT) {
-//         name = "RDT";
-//     } else if (turfOwner == SP) {
-//         name = "SP";
-//     }
-//     return name;
-// }
+getTurfOwnerName(turfOwner) {
+    new gangName[4];
+    gangName = "nul";
+    if (turfOwner == RDT) {
+        gangName = "RDT";
+    } else if (turfOwner == SP) {
+        gangName = "SP";
+    }
+    return gangName;
+}
 
-// turfOwner - should give the int of the faction
 getTurfOpposedFaction(turfOwner) {
     if (turfOwner == RDT) {
         return SP;
@@ -664,16 +718,16 @@ getTurfOpposedFaction(turfOwner) {
     return turfOwner;
 }
 
-// getTurfOpposedFactionName(turfOwner) {
-//     new name[4];
-//     name = "nul";
-//     if (turfOwner == RDT) {
-//         name = "SP";
-//     } else if (turfOwner == SP) {
-//         name = "RDT";
-//     }
-//     return name;
-// }
+getTurfOpposedFactionName(turfOwner) {
+    new gangName[4];
+    gangName = "nul";
+    if (turfOwner == RDT) {
+        gangName = "SP";
+    } else if (turfOwner == SP) {
+        gangName = "RDT";
+    }
+    return gangName;
+}
 
 getPlayerOpposedFaction(playerid) {
     new factionName[9];
@@ -701,6 +755,20 @@ public KickWithDelay(playerid) {
     return 1;
 }
 
+createHealthDrop(deadPlayerId) {
+    new Float:deadPosX, Float:deadPosY, Float:deadPosZ;
+    GetPlayerPos(deadPlayerId, deadPosX, deadPosY, deadPosZ);
+
+    healthDrops = CreateDynamicPickup(1249, 19, deadPosX, deadPosY, (deadPosZ + 5));
+}
+
+createWeaponDrop(deadPlayerId) {
+    new Float:deadPosX, Float:deadPosY, Float:deadPosZ;
+    GetPlayerPos(deadPlayerId, deadPosX, deadPosY, deadPosZ);
+
+    ammoDrops = CreateDynamicPickup(19832, 19, deadPosX, deadPosY, deadPosZ);
+}
+
 // -------------------- FACTION COMMANDS --------------------
 COMMAND:attack(playerid, params[]) {
     if (getPlayerFactionRank(playerid) >= 5) {
@@ -717,16 +785,16 @@ COMMAND:attack(playerid, params[]) {
     return 1;
 }
 
-COMMAND:turfs(playerid, params[]) {
+COMMAND:turfs(playerid) {
     new turfsShownStatus = GetPVarInt(playerid, "areTurfsShown");
     if (turfsShownStatus == 0) {
         for (new turfid = 0; turfid <= 23; turfid++) {
             new turfOwner;
             turfOwner = turfs[turfid][owner];
             switch (turfOwner) {
-                case 5:
+                case RDT:
                     ShowZoneForPlayer(playerid, turfs[turfid][id], 0xFF000099, 0xFFFFFFFF, 0xFFFFFFFF);
-                case 6:
+                case SP:
                     ShowZoneForPlayer(playerid, turfs[turfid][id], 0x8A2BE299, 0xFFFFFFFF, 0xFFFFFFFF);
             }
         }
@@ -1009,24 +1077,13 @@ COMMAND:rankdown(playerid, params[]) {
 
 // -------------------- WAR --------------------
 
-
-// warTextDraws
-new PlayerText:tdWarBox2[MAX_PLAYERS];
-new PlayerText:tdWarLocation[MAX_PLAYERS];
-new PlayerText:tdWarBox[MAX_PLAYERS];
-new PlayerText:tdWarScore[MAX_PLAYERS];
-new PlayerText:tdWarRoundsCount[MAX_PLAYERS];
-new PlayerText:tdWarOnTurf[MAX_PLAYERS];
-new PlayerText:tdWarStats[MAX_PLAYERS];
-
 displayWarTextDraw(playerid) {
     new statsBoxText[2];
     format(statsBoxText, sizeof(statsBoxText), "_");
 
-    new turfNameText[20];
-    new turfNr;
-    turfNr = GetSVarInt("warTurf");
-    format(turfNameText, sizeof(turfNameText), "Turf Number: %d", turfNr);
+    new turfNameText[30];
+    new turfNr = GetSVarInt("warTurf");
+    format(turfNameText, sizeof(turfNameText), "Turf: %s", turfs[turfNr][name]);
 
     new warMafiaRounds[50];
     format(warMafiaRounds, sizeof(warMafiaRounds), "Rounds %s %d - %d %s", "SP", 0, 0, "RDT");
@@ -1038,14 +1095,14 @@ displayWarTextDraw(playerid) {
     format(warRoundScoreText, sizeof(warRoundScoreText), "%s %d - %d %s", "SP", 0, 0, "RDT");
 
     new warTurfPlayersText[50];
-    format(warTurfPlayersText, sizeof(warTurfPlayersText), "On turf: %s %d - %d %s", "SP", 0, 0, "RDT");
+    format(warTurfPlayersText, sizeof(warTurfPlayersText), "Pe turf: %s %d - %d %s", "SP", 0, 0, "RDT");
 
     new warPlayerStatsText[25];
     format(warPlayerStatsText, sizeof(warPlayerStatsText), "Ucideri: %d Morti: %d", 0, 0);
 
     tdWarBox2[playerid] = CreatePlayerTextDraw(playerid, 555.000000, 350.000000, "_");
     PlayerTextDrawFont(playerid, tdWarBox2[playerid], 1);
-    PlayerTextDrawLetterSize(playerid, tdWarBox2[playerid], 0.466666, 8.000002);
+    PlayerTextDrawLetterSize(playerid, tdWarBox2[playerid], 0.466666, 8.000001);
     PlayerTextDrawTextSize(playerid, tdWarBox2[playerid], 281.500000, 117.500000);
     PlayerTextDrawSetOutline(playerid, tdWarBox2[playerid], 2);
     PlayerTextDrawSetShadow(playerid, tdWarBox2[playerid], 1);
@@ -1057,7 +1114,7 @@ displayWarTextDraw(playerid) {
     PlayerTextDrawSetProportional(playerid, tdWarBox2[playerid], 1);
     PlayerTextDrawSetSelectable(playerid, tdWarBox2[playerid], 0);
 
-    tdWarLocation[playerid] = CreatePlayerTextDraw(playerid, 555.000000, 349.000000, "Turf: Paramedics LV");
+    tdWarLocation[playerid] = CreatePlayerTextDraw(playerid, 555.000000, 349.000000, turfNameText);
     PlayerTextDrawFont(playerid, tdWarLocation[playerid], 1);
     PlayerTextDrawLetterSize(playerid, tdWarLocation[playerid], 0.341666, 1.500000);
     PlayerTextDrawTextSize(playerid, tdWarLocation[playerid], 485.000000, 174.500000);
@@ -1085,10 +1142,10 @@ displayWarTextDraw(playerid) {
     PlayerTextDrawSetProportional(playerid, tdWarBox[playerid], 1);
     PlayerTextDrawSetSelectable(playerid, tdWarBox[playerid], 0);
 
-    tdWarScore[playerid] = CreatePlayerTextDraw(playerid, 555.000000, 362.000000, "SP 7 - 4 RDT");
+    tdWarScore[playerid] = CreatePlayerTextDraw(playerid, 555.000000, 362.000000, "SP 0 - 0 RDT");
     PlayerTextDrawFont(playerid, tdWarScore[playerid], 1);
     PlayerTextDrawLetterSize(playerid, tdWarScore[playerid], 0.283333, 1.649999);
-    PlayerTextDrawTextSize(playerid, tdWarScore[playerid], 355.000000, 87.000000);
+    PlayerTextDrawTextSize(playerid, tdWarScore[playerid], 360.000000, 182.000000);
     PlayerTextDrawSetOutline(playerid, tdWarScore[playerid], 0);
     PlayerTextDrawSetShadow(playerid, tdWarScore[playerid], 0);
     PlayerTextDrawAlignment(playerid, tdWarScore[playerid], 2);
@@ -1099,7 +1156,7 @@ displayWarTextDraw(playerid) {
     PlayerTextDrawSetProportional(playerid, tdWarScore[playerid], 1);
     PlayerTextDrawSetSelectable(playerid, tdWarScore[playerid], 0);
 
-    tdWarRoundsCount[playerid] = CreatePlayerTextDraw(playerid, 555.000000, 376.000000, "Round 3 / 15");
+    tdWarRoundsCount[playerid] = CreatePlayerTextDraw(playerid, 555.000000, 376.000000, "Round 1 / 15");
     PlayerTextDrawFont(playerid, tdWarRoundsCount[playerid], 1);
     PlayerTextDrawLetterSize(playerid, tdWarRoundsCount[playerid], 0.254166, 1.500000);
     PlayerTextDrawTextSize(playerid, tdWarRoundsCount[playerid], 355.000000, 102.000000);
@@ -1113,7 +1170,7 @@ displayWarTextDraw(playerid) {
     PlayerTextDrawSetProportional(playerid, tdWarRoundsCount[playerid], 1);
     PlayerTextDrawSetSelectable(playerid, tdWarRoundsCount[playerid], 0);
 
-    tdWarOnTurf[playerid] = CreatePlayerTextDraw(playerid, 556.000000, 390.000000, "Pe turf: SP 5 - 3 RDT");
+    tdWarOnTurf[playerid] = CreatePlayerTextDraw(playerid, 556.000000, 390.000000, "Pe turf: SP 0 - 0 RDT");
     PlayerTextDrawFont(playerid, tdWarOnTurf[playerid], 1);
     PlayerTextDrawLetterSize(playerid, tdWarOnTurf[playerid], 0.237498, 1.699998);
     PlayerTextDrawTextSize(playerid, tdWarOnTurf[playerid], 355.000000, 117.000000);
@@ -1127,7 +1184,7 @@ displayWarTextDraw(playerid) {
     PlayerTextDrawSetProportional(playerid, tdWarOnTurf[playerid], 1);
     PlayerTextDrawSetSelectable(playerid, tdWarOnTurf[playerid], 0);
 
-    tdWarStats[playerid] = CreatePlayerTextDraw(playerid, 557.000000, 405.000000, "Ucideri: 3 Morti: 4");
+    tdWarStats[playerid] = CreatePlayerTextDraw(playerid, 557.000000, 405.000000, "Ucideri: 0 Morti: 0");
     PlayerTextDrawFont(playerid, tdWarStats[playerid], 1);
     PlayerTextDrawLetterSize(playerid, tdWarStats[playerid], 0.295832, 1.649999);
     PlayerTextDrawTextSize(playerid, tdWarStats[playerid], 355.000000, 102.000000);
@@ -1150,16 +1207,18 @@ displayWarTextDraw(playerid) {
     PlayerTextDrawShow(playerid, PlayerText:tdWarStats[playerid]);
 }
 
-preparePlayersForWar() {
+preparePlayersForWar(attackedTurfId) {
     SendClientMessageToAll(COLOR_PURPLE, "War-urile intre mafii vor incepe incurand!");
     SendClientMessageToAll(COLOR_PURPLE, "Toti mafiotii vor fi respawnati la HQ-uri in cateva secunde");
+
     new j = GetPlayerPoolSize();
-    for (new i = 0; i <= j; i++) {
-        if (!checkIfCivil(i)) {
-            SpawnPlayer(i);
-            SetPlayerVirtualWorld(i, 2);
-            displayWarTextDraw(i);
-            SendClientMessage(i, COLOR_BLUE, "Ai fost respawnat la HQ deoarece va incepe war-ul");
+    for (new playerid = 0; playerid <= j; playerid++) {
+        if (!checkIfCivil(playerid)) {
+            SetPlayerVirtualWorld(playerid, 2);
+            SpawnPlayer(playerid);
+            displayWarTextDraw(playerid);
+            ZoneFlashForAll(turfs[attackedTurfId][id], 0xFFFFFFAA);
+            SendClientMessage(playerid, COLOR_BLUE, "Ai fost respawnat la HQ deoarece va incepe war-ul");
         }
     }
     return 1;
@@ -1172,25 +1231,16 @@ prepareTurf(turfIdForWar) {
 
     ZoneFlashForAll(turfs[turfIdForWar][id], 0xFFFFFF99);
 }
-// pointFromKill(playerid, killerid) {
-//     if (GetPlayerVirtualWorld(playerid) == 2 && GetPlayerVirtualWorld(killerid) == 2) {
-//         // both are in war vw
-//         new killerFaction[9];
-//         killerFaction = getPlayerFactionName(killerid);
 
-//         new rdtName[9], spName[9];
-//         rdtName = "RDT";
-//         spName = "SP";
-//         if (isequal(killerFaction, rdtName)) {
-//             new pointRDT = GetSVarInt("pointsRDT");
-//             SetSVarInt("pointsRDT", (pointRDT + 1));
-//         } else if (isequal(killerFaction, spName)) {
-//             new pointSP = GetSVarInt("pointsSP");
-//             SetSVarInt("pointsSP", (pointSP + 1));
-//         }
-//     }
-// }
-
+pointFromKill(killerid) {
+    if (GetPlayerTeam(killerid) == RDT) {
+        new pointRDT = GetSVarInt("pointsRDT");
+        SetSVarInt("pointsRDT", (pointRDT + 1));
+    } else if (GetPlayerTeam(killerid) == SP) {
+        new pointSP = GetSVarInt("pointsSP");
+        SetSVarInt("pointsSP", (pointSP + 1));
+    }
+}
 
 new influenceTimer, endWarTimer, roundTimer;
 new updatePlayersOnTurfTdTimer;
@@ -1210,7 +1260,7 @@ startWar(const turf_id[], attackerid) {
     SetSVarInt("warTurf", attackedTurfId);
 
     prepareTurf(attackedTurfId);
-    preparePlayersForWar();
+    preparePlayersForWar(attackedTurfId);
 
     SetSVarInt("roundsRDT", 0);
     SetSVarInt("roundsSP", 0);
@@ -1262,11 +1312,18 @@ public updatePlayersOnTurfTd() {
     playersSP = getPlayersOnTurf(SP, GetSVarFloat("poiX"), GetSVarFloat("poiY"), GetSVarFloat("poiZ"));
 
     new warTurfPlayersText[50];
-    format(warTurfPlayersText, sizeof(warTurfPlayersText), "On turf: %s %d - %d %s", "SP", playersSP, playersRDT, "RDT");
+    format(warTurfPlayersText, sizeof(warTurfPlayersText), "Pe turf: %s %d - %d %s", "SP", playersSP, playersRDT, "RDT");
+
+    new warPoints[15];
+    new spPoints = GetSVarInt("pointsSP");
+    new rdtPoints = GetSVarInt("pointsRDT");
+    format(warPoints, sizeof(warPoints), "SP %d - %d RDT", spPoints, rdtPoints);
+
     new j = GetPlayerPoolSize();
     for (new playerId = 0; playerId <= j; playerId++) {
         if (GetPlayerVirtualWorld(playerId) == 2) {
             PlayerTextDrawSetString(playerId, PlayerText:tdWarOnTurf[playerId], warTurfPlayersText);
+            PlayerTextDrawSetString(playerId, PlayerText:tdWarScore[playerId], warPoints);
         }
     }
 }
@@ -1296,8 +1353,11 @@ public advanceRound() {
         SetSVarInt("pointsSP", 0);
     }
 
+    new oldRoundCount = GetSVarInt("currentRound");
+    SetSVarInt("currentRound", (oldRoundCount + 1));
+
     new warRoundScoreText[50];
-    format(warRoundScoreText, sizeof(warRoundScoreText), "Rounds %s %d - %d %s", "SP", spRounds, rdtRounds, "RDT");
+    format(warRoundScoreText, sizeof(warRoundScoreText), "%s %d - %d %s", "SP", spRounds, rdtRounds, "RDT");
 
     new warTotalRounds[16];
     format(warTotalRounds, sizeof(warTotalRounds), "Runda %d / 15", GetSVarInt("currentRound"));
@@ -1305,15 +1365,8 @@ public advanceRound() {
     new j = GetPlayerPoolSize();
     for (new playerid = 0; playerid <= j; playerid++) {
         if (GetPlayerVirtualWorld(playerid) == 2) {
-            //             new PlayerText:tdWarBox2[MAX_PLAYERS];
-            // new PlayerText:tdWarLocation[MAX_PLAYERS];
-            // new PlayerText:tdWarBox[MAX_PLAYERS];
-            // new PlayerText:tdWarScore[MAX_PLAYERS];
-            // new PlayerText:tdWarRoundsCount[MAX_PLAYERS];
-            // new PlayerText:tdWarOnTurf[MAX_PLAYERS];
-            // new PlayerText:tdWarStats[MAX_PLAYERS];
             PlayerTextDrawSetString(playerid, PlayerText:tdWarScore[playerid], warRoundScoreText);
-            PlayerTextDrawSetString(playerid, PlayerText:tdWarRoundsCount[playerid], warRoundScoreText);
+            PlayerTextDrawSetString(playerid, PlayerText:tdWarRoundsCount[playerid], warTotalRounds);
         }
     }
 }
@@ -1346,19 +1399,21 @@ public pointFromInfluence() {
 endWar() {
     // hide text draws
     new j = GetPlayerPoolSize();
-    for (new i = 0; i <= j; i++) {
-        if (GetPlayerVirtualWorld(i) == 2) {
-            PlayerTextDrawHide(i, PlayerText:tdWarBox2[i]);
-            PlayerTextDrawHide(i, PlayerText:tdWarLocation[i]);
-            PlayerTextDrawHide(i, PlayerText:tdWarBox[i]);
-            PlayerTextDrawHide(i, PlayerText:tdWarScore[i]);
-            PlayerTextDrawHide(i, PlayerText:tdWarOnTurf[i]);
-            PlayerTextDrawHide(i, PlayerText:tdWarStats[i]);
+    for (new playerid = 0; playerid <= j; playerid++) {
+        if (GetPlayerVirtualWorld(playerid) == 2) {
+            PlayerTextDrawHide(playerid, PlayerText:tdWarBox2[playerid]);
+            PlayerTextDrawHide(playerid, PlayerText:tdWarLocation[playerid]);
+            PlayerTextDrawHide(playerid, PlayerText:tdWarBox[playerid]);
+            PlayerTextDrawHide(playerid, PlayerText:tdWarScore[playerid]);
+            PlayerTextDrawHide(playerid, PlayerText:tdWarRoundsCount[playerid]);
+            PlayerTextDrawHide(playerid, PlayerText:tdWarOnTurf[playerid]);
+            PlayerTextDrawHide(playerid, PlayerText:tdWarStats[playerid]);
 
             // showBestPlayer(i);
             // showWorstPlayer(i);
 
-            SetPlayerVirtualWorld(i, 0);
+            SetPlayerVirtualWorld(playerid, 0);
+            SpawnPlayer(playerid);
         }
     }
     new warTurfId = GetSVarInt("warTurf");
@@ -1366,8 +1421,7 @@ endWar() {
     SetSVarString("isWarOn", "false");
 
     new warWinner = GetSVarInt("warWinner");
-    // checkTurfWarOwner(warWinner);
-    loadTurfs();
+    checkTurfWarOwner(warWinner);
 
     KillTimer(influenceTimer);
     KillTimer(endWarTimer);
@@ -1377,36 +1431,50 @@ endWar() {
     SendClientMessageToAll(COLOR_BLUE, "War-ul s-a incheiat");
 }
 
-// checkTurfWarOwner(winnerMafia) {
-//     new warTurf = GetSVarInt("warTurf");
+checkTurfWarOwner(winnerMafia) {
+    new warTurf = GetSVarInt("warTurf");
 
-//     new message[100];
-//     new oldOwner = turfs[warTurf][owner];
-//     new oldOwnerName[4];
-//     oldOwnerName = getTurfOwnerName(oldOwner);
-//     new opposedMafia = getTurfOpposedFaction(oldOwner);
-//     new opposedMafiaName[4];
-//     opposedMafiaName = getTurfOpposedFactionName(oldOwner);
+    new message[100];
+    new oldOwner = turfs[warTurf][owner];
+    new oldOwnerName[4];
+    oldOwnerName = getTurfOwnerName(oldOwner);
+    new opposedMafia = getTurfOpposedFaction(oldOwner);
+    new opposedMafiaName[4];
+    opposedMafiaName = getTurfOpposedFactionName(oldOwner);
 
-//     if (oldOwner == winnerMafia) {
-//         format(message, sizeof(message), "Mafia %s a reusit sa apere turf-ul cu numarul %d, fiind atacati de catre %s!", oldOwnerName, warTurf, opposedMafiaName);
-//         SendClientMessageToAll(COLOR_GREEN, message);
-//     } else {
-//         format(message, sizeof(message), "Mafia %s a reusit sa cucereasca turf-ul cu numarul %d de la mafia %s!", opposedMafiaName, warTurf, oldOwnerName);
-//         SendClientMessageToAll(COLOR_GREEN, message);
+    if (oldOwner == winnerMafia) {
+        format(message, sizeof(message), "Mafia %s a reusit sa apere turf-ul cu numarul %d, fiind atacati de catre %s!", oldOwnerName, warTurf, opposedMafiaName);
+        SendClientMessageToAll(COLOR_GREEN, message);
+    } else {
+        format(message, sizeof(message), "Mafia %s a reusit sa cucereasca turf-ul cu numarul %d de la mafia %s!", opposedMafiaName, warTurf, oldOwnerName);
+        SendClientMessageToAll(COLOR_GREEN, message);
 
-//         new query[100];
-//         format(query, sizeof(query), "UPDATE Turfs SET owner = %d WHERE turf_id = %d", opposedMafia, warTurf);
+        turfs[warTurf][owner] = opposedMafia;
+        updateTurfData(warTurf);
 
-//         new DBResult:queryResult = db_query(connection, query);
-//         if (db_num_rows(queryResult) == 1) {
-//             print("turf owner update successful");
-//         } else {
-//             print("turf owner update failed");
-//         }
-//         db_free_result(queryResult);
-//     }
-// }
+        new query[100];
+        format(query, sizeof(query), "UPDATE Turfs SET owner = %d WHERE id = %d;", opposedMafia, (turfs[warTurf][id] + 1));
+        db_free_result(db_query(connection, query));
+    }
+}
+
+updateTurfData(turfId) {
+    switch (turfs[turfId][owner]) {
+        case RDT:  {
+            for (new playerid = 0; playerid <= GetPlayerPoolSize(); playerid++) {
+                HideZoneForPlayer(playerid, turfs[turfId][id]);
+                ShowZoneForPlayer(playerid, turfs[turfId][id], 0xFF000099, 0xFFFFFFFF, 0xFFFFFFFF);
+            }
+        }
+        case SP:  {
+            for (new playerid = 0; playerid <= GetPlayerPoolSize(); playerid++) {
+                HideZoneForPlayer(playerid, turfs[turfId][id]);
+                ShowZoneForPlayer(playerid, turfs[turfId][id], 0x8A2BE299, 0xFFFFFFFF, 0xFFFFFFFF);
+            }
+        }
+    }
+
+}
 
 // -------------------- HQ COMMANDS --------------------
 

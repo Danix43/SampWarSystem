@@ -1,6 +1,7 @@
-#include <a_samp>
-
 #define FILTERSCRIPT
+
+#include <a_samp>
+#include <nex-ac>
 
 new Text:tdTime;
 new Text:tdDate;
@@ -68,6 +69,7 @@ public OnPlayerConnect(playerid) {
     PlayerTextDrawSetSelectable(playerid, tdLoginTitle[playerid], 0);
 
     PlayerTextDrawShow(playerid, tdLoginTitle[playerid]);
+    return 1;
 }
 
 public OnPlayerSpawn(playerid) {
@@ -93,6 +95,7 @@ public OnPlayerSpawn(playerid) {
     PlayerTextDrawShow(playerid, tdPlayerName[playerid]);
     TextDrawShowForPlayer(playerid, tdTime);
     TextDrawShowForPlayer(playerid, tdDate);
+    return 1;
 }
 
 forward updateTimeDate();

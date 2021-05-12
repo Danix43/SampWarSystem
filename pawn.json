@@ -8,9 +8,9 @@
 		"maddinat0r/sscanf",
 		"YashasSamaga/I-ZCMD",
 		"Sreyas-Sreelal/samp-bcrypt",
-		"NexiusTailer/Nex-AC",
 		"pawn-lang/sa-mp-fixes",
-		"oscar-broman/strlib"
+		"oscar-broman/strlib",
+		"samp-incognito/samp-streamer-plugin"
 	],
 	"local": true,
 	"runtime": {
@@ -20,7 +20,9 @@
 			"textdraws",
 			"tools"
 		],
-		"plugins": [],
+		"plugins": [
+			"sscanf"
+		],
 		"rcon_password": "danix1923",
 		"port": 7777,
 		"hostname": "War Between Mafia - Clan CLR",

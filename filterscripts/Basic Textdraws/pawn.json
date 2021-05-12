@@ -4,6 +4,25 @@
 	"entry": "textdraws.pwn",
 	"output": "../textdraws.amx",
 	"dependencies": [
-		"sampctl/samp-stdlib"
+		"sampctl/samp-stdlib",
+		"NexiusTailer/Nex-AC"
+	],
+	"runtime": {
+		"version": "0.3.7",
+		"mode": "server",
+		"rcon_password": "password",
+		"port": 7777,
+		"hostname": "SA-MP Server",
+		"maxplayers": 50,
+		"language": ""
+	},
+	"builds": [
+		{
+			"name": "main",
+			"includes": [
+				"includes"
+			],
+			"compiler": {}
+		}
 	]
 }

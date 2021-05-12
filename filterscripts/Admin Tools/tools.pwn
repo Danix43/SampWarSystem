@@ -1,10 +1,10 @@
+#define FILTERSCRIPT
+
 #include <a_samp>
+#include <nex-ac>
 #include <izcmd>
-#include "nex-ac"
 #include <sscanf2>
 #include <strlib>
-
-#define FILTERSCRIPT
 
 static DB:connection;
 
