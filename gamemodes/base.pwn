@@ -37,16 +37,17 @@ enum {
 }
 
 enum PlayerStats {
-    faction,
-    rank,
-    kills,
-    warKills,
-    deaths,
-    warDeaths,
-    kda,
-    warKda,
-    bests,
-    worsts
+    name[MAX_PLAYER_NAME],
+        faction,
+        rank,
+        kills,
+        warKills,
+        deaths,
+        warDeaths,
+        kda,
+        warKda,
+        bests,
+        worsts
 }
 new players[MAX_PLAYERS][PlayerStats];
 
@@ -185,6 +186,16 @@ public OnPlayerSpawn(playerid) {
             SetPlayerInterior(playerid, 18);
         case CIVILIAN:
             SetPlayerInterior(playerid, 0);
+    }
+    if (!checkIfCivil(playerid)) {
+        new isWarOnStatus = GetSVarInt("isWarOn");
+        if (isWarOnStatus == 1) {
+            new warTurfId = GetSVarInt("warTurf");
+            SetPlayerVirtualWorld(playerid, 2);
+            displayWarTextDraw(playerid);
+            ZoneFlashForPlayer(playerid, turfs[warTurfId][id], 0xFFFFFFAA);
+            SendClientMessage(playerid, COLOR_BLUE, "Ai fost respawnat la HQ deoarece un war este in desfasurare!");
+        }
     }
     return 1;
 }
@@ -341,6 +352,8 @@ loadPlayerStats(playerid) {
 
     new query[50 + MAX_PLAYER_NAME];
     format(query, sizeof(query), "SELECT * FROM Players WHERE name = '%s';", playerName);
+
+    players[playerid][name] = playerName;
 
     new DBResult:queryResult = db_query(connection, query);
     if (db_num_rows(queryResult)) {
@@ -767,6 +780,81 @@ createWeaponDrop(deadPlayerId) {
     GetPlayerPos(deadPlayerId, deadPosX, deadPosY, deadPosZ);
 
     ammoDrops = CreateDynamicPickup(19832, 19, deadPosX, deadPosY, deadPosZ);
+}
+
+buildMembersList(playerFaction) {
+    new returnData[500];
+    new query[100];
+
+    new headers[13];
+    headers = "Rank\tNume\n";
+    strcatmid(returnData, headers);
+
+    if (playerFaction == RDT) {
+        format(query, sizeof(query), "SELECT name, factionRank FROM Players ORDER BY factionRank DESC WHERE faction = %d;", RDT);
+        new DBResult:queryResult = db_query(connection, query);
+        do {
+            new playerName[MAX_PLAYER_NAME];
+            new playerFactionRank;
+
+            db_get_field_assoc(queryResult, "name", playerName, sizeof(playerName));
+            playerFactionRank = db_get_field_assoc_int(queryResult, "factionRank");
+
+            new displayPlayerFactionRank[25];
+
+            if (playerFactionRank == 7) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Dragon Leader", 7);
+            } else if (playerFactionRank == 6) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Mountain Master", playerFactionRank);
+            } else if (playerFactionRank == 4 || playerFactionRank == 5) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "White Paper Fan", playerFactionRank);
+            } else if (playerFactionRank == 3) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Red Pole", playerFactionRank);
+            } else if (playerFactionRank == 1 || playerFactionRank == 2) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Blue Lantern", playerFactionRank);
+            }
+
+            new temp[60];
+            format(temp, sizeof(temp), "%s\t%s\n", displayPlayerFactionRank, playerName);
+            strcatmid(returnData, temp);
+        } while (db_next_row(queryResult));
+        db_free_result(queryResult);
+        return returnData;
+    }
+
+    if (playerFaction == SP) {
+        format(query, sizeof(query), "SELECT name, factionRank FROM Players ORDER BY factionRank DESC WHERE faction = %d;", SP);
+        new DBResult:queryResult = db_query(connection, query);
+        while (db_num_rows(queryResult)) {
+            new playerName[MAX_PLAYER_NAME];
+            new playerFactionRank;
+
+            db_get_field_assoc(queryResult, "name", playerName, sizeof(playerName));
+            playerFactionRank = db_get_field_assoc_int(queryResult, "factionRank");
+
+            new displayPlayerFactionRank[25];
+
+            if (playerFactionRank == 7) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Pimp Boss", 7);
+            } else if (playerFactionRank == 6) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Pimp", playerFactionRank);
+            } else if (playerFactionRank == 4 || playerFactionRank == 5) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Wikkid", playerFactionRank);
+            } else if (playerFactionRank == 3) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Fattam", playerFactionRank);
+            } else if (playerFactionRank == 1 || playerFactionRank == 2) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "City Fish", playerFactionRank);
+            }
+
+            new temp[60];
+            format(temp, sizeof(temp), "%s\t%s\n", displayPlayerFactionRank, playerName);
+            strcatmid(returnData, temp);
+        }
+        db_free_result(queryResult);
+        return returnData;
+    }
+    return returnData;
+
 }
 
 // -------------------- FACTION COMMANDS --------------------
@@ -1270,7 +1358,7 @@ startWar(const turf_id[], attackerid) {
     SetSVarInt("pointsRDT", 0);
     SetSVarInt("pointsSP", 0);
 
-    SetSVarString("isWarOn", "true");
+    SetSVarInt("isWarOn", 1);
     SetSVarInt("warWinner", 0);
 
     updatePlayersOnTurfTdTimer = SetTimer("updatePlayersOnTurfTdTimer", 7500, true);
@@ -1330,14 +1418,26 @@ public updatePlayersOnTurfTd() {
 
 forward advanceRound();
 public advanceRound() {
+    // new rdtRounds = GetSVarInt("roundsRDT");
+    // new spRounds = GetSVarInt("roundsSP");
+    // if (rdtRounds >= 8) {
+    //     SetSVarInt("warWinner", RDT);
+    //     endWar();
+    // } else if (spRounds >= 8) {
+    //     SetSVarInt("warWinner", SP);
+    //     endWar();
+    // }
     new rdtRounds = GetSVarInt("roundsRDT");
     new spRounds = GetSVarInt("roundsSP");
-    if (rdtRounds >= 8) {
-        SetSVarInt("warWinner", RDT);
-        endWar();
-    } else if (spRounds >= 8) {
-        SetSVarInt("warWinner", SP);
-        endWar();
+    new totalRounds = GetSVarInt("currentRound");
+    if (totalRounds == 15) {
+        if (rdtRounds >= spRounds) {
+            SetSVarInt("warWinner", RDT);
+            endWar();
+        } else if (rdtRounds <= spRounds) {
+            SetSVarInt("warWinner", SP);
+            endWar();
+        }
     }
 
     new pointsRDT = GetSVarInt("pointsRDT");
@@ -1418,7 +1518,7 @@ endWar() {
     }
     new warTurfId = GetSVarInt("warTurf");
     ZoneStopFlashForAll(turfs[warTurfId][id]);
-    SetSVarString("isWarOn", "false");
+    SetSVarInt("isWarOn", 0);
 
     new warWinner = GetSVarInt("warWinner");
     checkTurfWarOwner(warWinner);
@@ -1477,6 +1577,36 @@ updateTurfData(turfId) {
 }
 
 // -------------------- HQ COMMANDS --------------------
+
+COMMAND:members(playerid) {
+    if (checkIfCivil(playerid)) {
+        SendClientMessage(playerid, COLOR_RED, "Nu faci parte din nicio factiune!");
+        return 1;
+    }
+    new playerFaction = players[playerid][faction];
+    switch (playerFaction) {
+        case RDT:  {
+            new membersData[500];
+            membersData = buildMembersList(RDT);
+            printf("membersData: %s", membersData);
+
+            OpenDialog(playerid, "", DIALOG_STYLE_TABLIST_HEADERS,
+                "Membrii mafiei {D40000}Red Dragons Triad",
+                membersData,
+                "Close", "");
+        }
+        case SP:  {
+            new membersData[500];
+            membersData = buildMembersList(SP);
+
+            OpenDialog(playerid, "", DIALOG_STYLE_TABLIST_HEADERS,
+                "Membrii mafiei {D415D1}Southern Pimps",
+                membersData,
+                "Close", "");
+        }
+    }
+    return 1;
+}
 
 COMMAND:heal(playerid) {
     if (GetPlayerInterior(playerid) == INTERIOR_RDT || GetPlayerInterior(playerid) == INTERIOR_SP) {
