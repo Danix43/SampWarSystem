@@ -17,8 +17,7 @@
 		"version": "0.3.7",
 		"mode": "server",
 		"filterscripts": [
-			"textdraws",
-			"tools"
+			"textdraws"
 		],
 		"plugins": [
 			"sscanf"
