@@ -17,6 +17,12 @@
 #define DIALOG_LOGIN 1337
 #define DIALOG_REGISTER 1338
 
+/*
+TODO: - fix list members
+        - change drugs timer to 15 min
+        - fix war textdraws
+*/
+
 // PRESSED(keys)
 #define PRESSED(%0) \
 (((newkeys & ( % 0)) == ( % 0)) && ((oldkeys & ( % 0)) != ( % 0)))
@@ -793,7 +799,7 @@ buildMembersList(playerFaction) {
     strcatmid(returnData, headers);
 
     if (playerFaction == RDT) {
-        format(query, sizeof(query), "SELECT name, factionRank FROM Players ORDER BY factionRank DESC WHERE faction = %d;", RDT);
+        format(query, sizeof(query), "SELECT name, factionRank FROM Players WHERE faction = %d ORDER BY factionRank DESC;", RDT);
         new DBResult:queryResult = db_query(connection, query);
         do {
             new playerName[MAX_PLAYER_NAME];
@@ -860,6 +866,37 @@ buildMembersList(playerFaction) {
 }
 
 // -------------------- FACTION COMMANDS --------------------
+COMMAND:fvr(playerid, params[]) {
+    new playerFactionRank = getPlayerFactionRank(playerid);
+
+    if (GetPlayerTeam(playerid) == RDT) {
+        if (playerFactionRank == 7 ||
+            playerFactionRank == 6 ||
+            playerFactionRank == 5) {
+            new i;
+            for (i = 0; i <= 10; i++) {
+                SetVehicleToRespawn(rdtVehiclesVw1[i]);
+                SetVehicleToRespawn(rdtVehiclesVw2[i]);
+            }
+        } else {
+            SendClientMessage(playerid, COLOR_RED, "Nu ai rank-ul necesar pentru FVR!");
+        }
+    } else if (GetPlayerTeam(playerid) == SP) {
+        if (playerFactionRank == 7 ||
+            playerFactionRank == 6 ||
+            playerFactionRank == 5) {
+            new i;
+            for (i = 0; i <= 10; i++) {
+                SetVehicleToRespawn(spVehiclesVw1[i]);
+                SetVehicleToRespawn(spVehiclesVw2[i]);
+            }
+        } else {
+            SendClientMessage(playerid, COLOR_RED, "Nu ai rank-ul necesar pentru FVR!");
+        }
+    }
+    return 1;
+}
+
 COMMAND:f(playerid, params[]) {
     new message[100];
     if (sscanf(params, "s[100]", message)) {
@@ -867,7 +904,43 @@ COMMAND:f(playerid, params[]) {
         return 1;
     } else {
         new messageToChat[144];
-        format(messageToChat, sizeof(messageToChat), "** (%d) %s : (( %s )) **", players[playerid][rank], players[playerid][name], message);
+
+        new displayPlayerFactionRank[25];
+
+        new playerFactionRank = players[playerid][rank];
+
+        if (players[playerid][faction] == RDT) {
+            if (playerFactionRank == 7) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Dragon Leader", 7);
+            } else if (playerFactionRank == 6) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Mountain Master", playerFactionRank);
+            } else if (playerFactionRank == 4 || playerFactionRank == 5) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "White Paper Fan", playerFactionRank);
+            } else if (playerFactionRank == 3) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Red Pole", playerFactionRank);
+            } else if (playerFactionRank == 1 || playerFactionRank == 2) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Blue Lantern", playerFactionRank);
+            }
+        }
+        if (players[playerid][faction] == SP) {
+            if (playerFactionRank == 7) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Pimp Boss", 7);
+            } else if (playerFactionRank == 6) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Pimp", playerFactionRank);
+            } else if (playerFactionRank == 4 || playerFactionRank == 5) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Wikkid", playerFactionRank);
+            } else if (playerFactionRank == 3) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "Fattam", playerFactionRank);
+            } else if (playerFactionRank == 1 || playerFactionRank == 2) {
+                format(displayPlayerFactionRank, sizeof(displayPlayerFactionRank), "%s (%d)", "City Fish", playerFactionRank);
+            }
+        }
+        if (players[playerid][faction] == CIVILIAN) {
+            SendClientMessage(playerid, COLOR_RED, "Nu faci parte dintr-o mafie!");
+            return 1;
+        }
+
+        format(messageToChat, sizeof(messageToChat), "** (%s) %s : (( %s )) **", displayPlayerFactionRank, players[playerid][name], message);
 
         new playerFaction = players[playerid][faction];
 
@@ -889,74 +962,98 @@ COMMAND:sellgun(playerid, params[]) {
         SendClientMessage(playerid, COLOR_RED, "Foloseste: /sellgun [nume / id player] [nume arma]!");
         return 1;
     } else {
+        if (takerId == playerid) {
+            SendClientMessage(playerid, COLOR_RED, "Nu iti poti vinde arme tie insuti!");
+            return 1;
+        }
+
         new takerName[MAX_PLAYER_NAME];
         GetPlayerName(takerId, takerName, sizeof(takerName));
 
         new giverName[MAX_PLAYER_NAME];
         GetPlayerName(playerid, giverName, sizeof(giverName));
 
-        new message[45 + MAX_PLAYER_NAME];
-
         new nameDeagle[7], nameM4[7], nameRifle[7];
         nameDeagle = "Deagle";
         nameM4 = "M4";
         nameRifle = "Rifle";
 
-        if (isequal(weaponName, nameDeagle)) {
-            selledGun[takerId] = 24;
-            format(message, sizeof(message), "Ai asamblat un Deagle si i l-ai dat lui %s!", takerName);
-            SendClientMessage(playerid, COLOR_BLUE, message);
-            format(message, sizeof(message), "Foloseste: [/acceptgun %d] pentru a primi un Deagle de la %s!", playerid, giverName);
-            SendClientMessage(takerId, COLOR_BLUE, message);
-        } else if (isequal(weaponName, nameM4)) {
-            selledGun[takerId] = 31;
-            format(message, sizeof(message), "Ai asamblat un M4 si i l-ai dat lui %s!", takerName);
-            SendClientMessage(playerid, COLOR_BLUE, message);
-            format(message, sizeof(message), "Foloseste: [/acceptgun %d] pentru a primi un M4 de la %s!", playerid, giverName);
-            SendClientMessage(takerId, COLOR_BLUE, message);
-        } else if (isequal(weaponName, nameRifle)) {
-            selledGun[takerId] = 33;
-            format(message, sizeof(message), "Ai asamblat o Rifle si i l-ai dat lui %s!", takerName);
-            SendClientMessage(playerid, COLOR_BLUE, message);
-            format(message, sizeof(message), "Foloseste: [/acceptgun %d] pentru a primi o Rifle de la %s!", playerid, giverName);
-            SendClientMessage(takerId, COLOR_BLUE, message);
+        new Float:takerPosX, Float:takerPosY, Float:takerPosZ;
+        GetPlayerPos(takerId, takerPosX, takerPosY, takerPosZ);
+
+        if (IsPlayerInRangeOfPoint(playerid, 20, takerPosX, takerPosY, takerPosZ)) {
+            new message[45 + MAX_PLAYER_NAME];
+            if (isequal(weaponName, nameDeagle)) {
+                selledGun[takerId] = 24;
+                format(message, sizeof(message), "Ai asamblat un Deagle si i l-ai dat lui %s!", takerName);
+                SendClientMessage(playerid, COLOR_BLUE, message);
+                format(message, sizeof(message), "Foloseste: [/acceptgun %d] pentru a primi un Deagle de la %s!", playerid, giverName);
+                SendClientMessage(takerId, COLOR_BLUE, message);
+                acceptgunTimer = SetTimerEx("cmd_acceptgun", 30000, false, "i", playerid);
+            } else if (isequal(weaponName, nameM4)) {
+                selledGun[takerId] = 31;
+                format(message, sizeof(message), "Ai asamblat un M4 si i l-ai dat lui %s!", takerName);
+                SendClientMessage(playerid, COLOR_BLUE, message);
+                format(message, sizeof(message), "Foloseste: [/acceptgun %d] pentru a primi un M4 de la %s!", playerid, giverName);
+                SendClientMessage(takerId, COLOR_BLUE, message);
+                acceptgunTimer = SetTimerEx("cmd_acceptgun", 30000, false, "i", playerid);
+            } else if (isequal(weaponName, nameRifle)) {
+                selledGun[takerId] = 33;
+                format(message, sizeof(message), "Ai asamblat o Rifle si i l-ai dat lui %s!", takerName);
+                SendClientMessage(playerid, COLOR_BLUE, message);
+                format(message, sizeof(message), "Foloseste: [/acceptgun %d] pentru a primi o Rifle de la %s!", playerid, giverName);
+                SendClientMessage(takerId, COLOR_BLUE, message);
+                acceptgunTimer = SetTimerEx("cmd_acceptgun", 30000, false, "i", playerid);
+            }
+        } else {
+            new message[52 + MAX_PLAYER_NAME];
+            format(message, sizeof(message), "Esti prea departe de %s pentru a-i da arma!", takerName);
+            SendClientMessage(playerid, COLOR_RED, message);
+            return 1;
         }
-        acceptgunTimer = SetTimerEx("cmd_acceptgun", 30000, false, "i", playerid);
     }
     return 1;
 }
 
 COMMAND:acceptgun(playerid, params[]) {
-    new giverId = -1;
+    new giverId;
     if (sscanf(params, "u", giverId)) {
-        if (giverId == -1) {
-            KillTimer(acceptgunTimer);
-            return 1;
-        }
         SendClientMessage(playerid, COLOR_RED, "Foloseste: /acceptgun [nume / id player]");
         return 1;
     } else {
         new giverName[MAX_PLAYER_NAME];
         GetPlayerName(giverId, giverName, sizeof(giverName));
 
-        new message[50 + MAX_PLAYER_NAME];
-        if (selledGun[playerid] == 24) {
-            GivePlayerWeapon(playerid, 24, 100);
-            format(message, sizeof(message), "Ai primit un Deagle de la %s!", giverName);
-            SendClientMessage(playerid, COLOR_BLUE, message);
-        } else if (selledGun[playerid] == 31) {
-            GivePlayerWeapon(playerid, 31, 100);
-            format(message, sizeof(message), "Ai primit un M4 de la %s!", giverName);
-            SendClientMessage(playerid, COLOR_BLUE, message);
-        } else if (selledGun[playerid] == 33) {
-            GivePlayerWeapon(playerid, 33, 100);
-            format(message, sizeof(message), "Ai primit o Rifle de la %s!", giverName);
-            SendClientMessage(playerid, COLOR_BLUE, message);
+        new Float:giverPosX, Float:giverPosY, Float:giverPosZ;
+        GetPlayerPos(playerid, giverPosX, giverPosY, giverPosZ);
+
+        if (IsPlayerInRangeOfPoint(playerid, 20, giverPosX, giverPosY, giverPosZ)) {
+            new message[50 + MAX_PLAYER_NAME];
+            if (selledGun[playerid] == 24) {
+                GivePlayerWeapon(playerid, 24, 100);
+                format(message, sizeof(message), "Ai primit un Deagle de la %s!", giverName);
+                SendClientMessage(playerid, COLOR_BLUE, message);
+            } else if (selledGun[playerid] == 31) {
+                GivePlayerWeapon(playerid, 31, 100);
+                format(message, sizeof(message), "Ai primit un M4 de la %s!", giverName);
+                SendClientMessage(playerid, COLOR_BLUE, message);
+            } else if (selledGun[playerid] == 33) {
+                GivePlayerWeapon(playerid, 33, 100);
+                format(message, sizeof(message), "Ai primit o Rifle de la %s!", giverName);
+                SendClientMessage(playerid, COLOR_BLUE, message);
+            }
+        } else {
+            new message[52 + MAX_PLAYER_NAME];
+            format(message, sizeof(message), "Te-ai indepartat prea mult de %s pentru a primi arma!", giverName);
+            SendClientMessage(playerid, COLOR_RED, message);
+            return 1;
         }
+
     }
     return 1;
 }
 
+#define DRUGTIMER 1125000
 COMMAND:usedrugs(playerid, params[]) {
     new drugUsed[8];
     if (sscanf(params, "s[8]", drugUsed)) {
@@ -970,7 +1067,7 @@ COMMAND:usedrugs(playerid, params[]) {
         drugCocaine = "cocaine";
         drugCox = "cox";
         if (isequal(drugUsed, drugMeth)) {
-            new Float:newHealth = oldHealth + 30;
+            new Float:newHealth = oldHealth + 20;
             if (newHealth > 100) {
                 SendClientMessage(playerid, COLOR_RED, "Nu poti lua drogul acum!");
                 return 1;
@@ -982,7 +1079,7 @@ COMMAND:usedrugs(playerid, params[]) {
 
             SetPlayerHealth(playerid, newHealth);
 
-            SetTimerEx("damageFromDrugs", 60000, false, "ii", playerid, 1);
+            SetTimerEx("damageFromDrugs", DRUGTIMER, false, "ii", playerid, 1);
         } else if (isequal(drugUsed, drugCocaine)) {
             new Float:newHealth = oldHealth + 30;
             if (newHealth > 100) {
@@ -996,9 +1093,9 @@ COMMAND:usedrugs(playerid, params[]) {
 
             SetPlayerHealth(playerid, newHealth);
 
-            SetTimerEx("damageFromDrugs", 60000, false, "ii", playerid, 2);
+            SetTimerEx("damageFromDrugs", DRUGTIMER, false, "ii", playerid, 2);
         } else if (isequal(drugUsed, drugCox)) {
-            new Float:newHealth = oldHealth + 30;
+            new Float:newHealth = oldHealth + 40;
             if (newHealth > 100) {
                 SendClientMessage(playerid, COLOR_RED, "Nu poti lua drogul acum!");
                 return 1;
@@ -1010,7 +1107,7 @@ COMMAND:usedrugs(playerid, params[]) {
 
             SetPlayerHealth(playerid, newHealth);
 
-            SetTimerEx("damageFromDrugs", 60000, false, "ii", playerid, 3);
+            SetTimerEx("damageFromDrugs", DRUGTIMER, false, "ii", playerid, 3);
         }
         return 1;
     }
@@ -1028,14 +1125,14 @@ public damageFromDrugs(playerid, drugUsed) {
     new Float:oldHealth;
     GetPlayerHealth(playerid, oldHealth);
     if (drugUsed == 1) {
-        SetPlayerHealth(playerid, (oldHealth - 50));
-        SendClientMessage(playerid, COLOR_RED, "Din cauza meth-ului ai pierdut 50 hp!");
+        SetPlayerHealth(playerid, (oldHealth - 20));
+        SendClientMessage(playerid, COLOR_RED, "Din cauza meth-ului ai pierdut 20 hp!");
     } else if (drugUsed == 2) {
-        SetPlayerHealth(playerid, (oldHealth - 70));
-        SendClientMessage(playerid, COLOR_RED, "Din cauza cocainei ai pierdut 70 hp!");
+        SetPlayerHealth(playerid, (oldHealth - 30));
+        SendClientMessage(playerid, COLOR_RED, "Din cauza cocainei ai pierdut 30 hp!");
     } else if (drugUsed == 3) {
-        SetPlayerHealth(playerid, (oldHealth - 120));
-        SendClientMessage(playerid, COLOR_RED, "Din cauza cox-ului ai pierdut 120 hp!");
+        SetPlayerHealth(playerid, (oldHealth - 40));
+        SendClientMessage(playerid, COLOR_RED, "Din cauza cox-ului ai pierdut 40 hp!");
     }
 }
 
@@ -1049,7 +1146,7 @@ COMMAND:members(playerid) {
         case RDT:  {
             new membersData[500];
             membersData = buildMembersList(RDT);
-            printf("membersData: %s", membersData);
+            // printf("membersData: %s", membersData);
 
             OpenDialog(playerid, "", DIALOG_STYLE_TABLIST_HEADERS,
                 "Membrii mafiei {D40000}Red Dragons Triad",
@@ -1837,136 +1934,6 @@ COMMAND:order4(playerid, params[]) {
 }
 
 // -------------------- ADMIN COMMANDS --------------------
-COMMAND:spec(playerid, params[]) {
-    return 1;
-}
-
-COMMAND:ban(playerid, params[]) {
-    if (IsPlayerAdmin(playerid)) {
-        new takerId;
-        new banReason[100];
-        if (sscanf(params, "us[100]", takerId, banReason)) {
-            SendClientMessage(playerid, COLOR_RED, "Foloseste: /ban [id / nume player] [motiv kick]");
-            return 1;
-        } else {
-            if (IsPlayerConnected(takerId)) {
-                new takerName[MAX_PLAYER_NAME];
-                GetPlayerName(takerId, takerName, sizeof(takerName));
-
-                new query[100];
-                format(query, sizeof(query), "UPDATE Players SET isBanned = 1, banReason = %s WHERE name = %s;", banReason, takerName);
-
-                new DBResult:queryResult = db_query(connection, query);
-                if (db_num_rows(queryResult)) {
-                    new message[144];
-                    format(message, sizeof(message), "Jucatorul %s a primit ban! Motiv: %s", takerName, banReason);
-                    SendClientMessageToAll(COLOR_RED, message);
-                    SetTimerEx("KickWithDelay", 1000, false, "i", takerId);
-                    db_free_result(queryResult);
-                    return 1;
-                } else {
-                    SendClientMessage(playerid, COLOR_RED, "Eroare la banarea playerului!");\
-                    db_free_result(queryResult);
-                    return 1;
-                }
-            } else {
-                SendClientMessage(playerid, COLOR_RED, "Playerul nu este conectat!");
-                return 1;
-            }
-        }
-    } else {
-        SendClientMessage(playerid, COLOR_RED, "Nu poti folosi acesta comanda deoarece nu esti admin!");
-        return 1;
-    }
-}
-
-COMMAND:kick(playerid, params[]) {
-    if (IsPlayerAdmin(playerid)) {
-        new takerId;
-        new kickReason[100];
-        if (sscanf(params, "us[100]", takerId, kickReason)) {
-            SendClientMessage(playerid, COLOR_RED, "Foloseste: /kick [id / nume player] [motiv kick]");
-            return 1;
-        } else {
-            if (IsPlayerConnected(takerId)) {
-                new takerName[MAX_PLAYER_NAME];
-                GetPlayerName(takerId, takerName, sizeof(takerName));
-
-                new message[144];
-                format(message, sizeof(message), "Jucatorul %s a primit kick! Motiv: %s", takerName, kickReason);
-                SendClientMessageToAll(COLOR_RED, message);
-                SetTimerEx("KickWithDelay", 1000, false, "i", takerId);
-                return 1;
-            } else {
-                SendClientMessage(playerid, COLOR_RED, "Playerul nu este conectat!");
-                return 1;
-            }
-        }
-    } else {
-        SendClientMessage(playerid, COLOR_RED, "Nu poti folosi acesta comanda deoarece nu esti admin!");
-        return 1;
-    }
-}
-
-COMMAND:slap(playerid, params[]) {
-    if (IsPlayerAdmin(playerid)) {
-        new takerId;
-        if (sscanf(params, "u", takerId)) {
-            SendClientMessage(playerid, COLOR_RED, "Foloseste: /slap [id | nume player]!");
-            return 1;
-        } else {
-            new giverName[MAX_PLAYER_NAME];
-            GetPlayerName(playerid, giverName, sizeof(giverName));
-
-            new Float:playerPosX, Float:playerPosY, Float:playerPosZ;
-            GetPlayerPos(takerId, playerPosX, playerPosY, playerPosZ);
-
-            SetPlayerPos(takerId, playerPosX, playerPosY, (playerPosZ + 2));
-
-            new message[100];
-            format(message, sizeof(message), "Ai primit slap de la adminul %s!", giverName);
-            SendClientMessage(takerId, COLOR_YELLOW, message);
-            return 1;
-        }
-    } else {
-        SendClientMessage(playerid, COLOR_RED, "Nu poti folosi acesta comanda deoarece nu esti admin!");
-        return 1;
-    }
-}
-
-COMMAND:pm(playerid, params[]) {
-    if (IsPlayerAdmin(playerid)) {
-        new takerId;
-        new pmMessage[120];
-        if (sscanf(params, "us[120]", takerId, pmMessage)) {
-            SendClientMessage(playerid, COLOR_RED, "Foloseste: /pm [id | nume player] [mesaj]");
-            return 1;
-        } else {
-            if (IsPlayerConnected(takerId)) {
-
-                new giverName[MAX_PLAYER_NAME];
-                GetPlayerName(playerid, giverName, sizeof(giverName));
-
-                new messageToPlayer[120 + MAX_PLAYER_NAME];
-                format(messageToPlayer, sizeof(messageToPlayer), "Admin %s : %s", giverName, pmMessage);
-
-                SendClientMessage(playerid, COLOR_YELLOW, messageToPlayer);
-                SendClientMessage(takerId, COLOR_YELLOW, messageToPlayer);
-                return 1;
-            } else {
-                SendClientMessage(playerid, COLOR_RED, "Playerul nu este conectat!");
-                return 1;
-            }
-        }
-    } else {
-        SendClientMessage(playerid, COLOR_RED, "Nu poti folosi acesta comanda deoarece nu esti admin!");
-        return 1;
-    }
-}
-
-COMMAND:skemamilsugiana(playerid, params[]) {
-    return 1;
-}
 
 COMMAND:setfactionleader(playerid, params[]) {
     new input[3];

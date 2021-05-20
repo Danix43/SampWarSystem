@@ -1,7 +1,6 @@
 #define FILTERSCRIPT
 
 #include <a_samp>
-#include <nex-ac>
 #include <izcmd>
 #include <sscanf2>
 #include <strlib>
@@ -39,45 +38,128 @@ COMMAND:spec(playerid, params[]) {
 }
 
 COMMAND:ban(playerid, params[]) {
-    return 1;
+    if (IsPlayerAdmin(playerid)) {
+        new takerId;
+        new banReason[100];
+        if (sscanf(params, "us[100]", takerId, banReason)) {
+            SendClientMessage(playerid, COLOR_RED, "Foloseste: /ban [id / nume player] [motiv kick]");
+            return 1;
+        } else {
+            if (IsPlayerConnected(takerId)) {
+                new takerName[MAX_PLAYER_NAME];
+                GetPlayerName(takerId, takerName, sizeof(takerName));
+
+                new query[100];
+                format(query, sizeof(query), "UPDATE Players SET isBanned = 1, banReason = %s WHERE name = %s;", banReason, takerName);
+
+                new DBResult:queryResult = db_query(connection, query);
+                if (db_num_rows(queryResult)) {
+                    new message[144];
+                    format(message, sizeof(message), "Jucatorul %s a primit ban! Motiv: %s", takerName, banReason);
+                    SendClientMessageToAll(COLOR_RED, message);
+                    SetTimerEx("KickWithDelay", 1000, false, "i", takerId);
+                    db_free_result(queryResult);
+                    return 1;
+                } else {
+                    SendClientMessage(playerid, COLOR_RED, "Eroare la banarea playerului!");\
+                    db_free_result(queryResult);
+                    return 1;
+                }
+            } else {
+                SendClientMessage(playerid, COLOR_RED, "Playerul nu este conectat!");
+                return 1;
+            }
+        }
+    } else {
+        SendClientMessage(playerid, COLOR_RED, "Nu poti folosi acesta comanda deoarece nu esti admin!");
+        return 1;
+    }
 }
 
 COMMAND:kick(playerid, params[]) {
-    return 1;
+    if (IsPlayerAdmin(playerid)) {
+        new takerId;
+        new kickReason[100];
+        if (sscanf(params, "us[100]", takerId, kickReason)) {
+            SendClientMessage(playerid, COLOR_RED, "Foloseste: /kick [id / nume player] [motiv kick]");
+            return 1;
+        } else {
+            if (IsPlayerConnected(takerId)) {
+                new takerName[MAX_PLAYER_NAME];
+                GetPlayerName(takerId, takerName, sizeof(takerName));
+
+                new message[144];
+                format(message, sizeof(message), "Jucatorul %s a primit kick! Motiv: %s", takerName, kickReason);
+                SendClientMessageToAll(COLOR_RED, message);
+                SetTimerEx("KickWithDelay", 1000, false, "i", takerId);
+                return 1;
+            } else {
+                SendClientMessage(playerid, COLOR_RED, "Playerul nu este conectat!");
+                return 1;
+            }
+        }
+    } else {
+        SendClientMessage(playerid, COLOR_RED, "Nu poti folosi acesta comanda deoarece nu esti admin!");
+        return 1;
+    }
 }
 
 COMMAND:slap(playerid, params[]) {
-    return 1;
+    if (IsPlayerAdmin(playerid)) {
+        new takerId;
+        if (sscanf(params, "u", takerId)) {
+            SendClientMessage(playerid, COLOR_RED, "Foloseste: /slap [id | nume player]!");
+            return 1;
+        } else {
+            new giverName[MAX_PLAYER_NAME];
+            GetPlayerName(playerid, giverName, sizeof(giverName));
+
+            new Float:playerPosX, Float:playerPosY, Float:playerPosZ;
+            GetPlayerPos(takerId, playerPosX, playerPosY, playerPosZ);
+
+            SetPlayerPos(takerId, playerPosX, playerPosY, (playerPosZ + 2));
+
+            new message[100];
+            format(message, sizeof(message), "Ai primit slap de la adminul %s!", giverName);
+            SendClientMessage(takerId, COLOR_YELLOW, message);
+            return 1;
+        }
+    } else {
+        SendClientMessage(playerid, COLOR_RED, "Nu poti folosi acesta comanda deoarece nu esti admin!");
+        return 1;
+    }
+}
+
+COMMAND:pm(playerid, params[]) {
+    if (IsPlayerAdmin(playerid)) {
+        new takerId;
+        new pmMessage[120];
+        if (sscanf(params, "us[120]", takerId, pmMessage)) {
+            SendClientMessage(playerid, COLOR_RED, "Foloseste: /pm [id | nume player] [mesaj]");
+            return 1;
+        } else {
+            if (IsPlayerConnected(takerId)) {
+
+                new giverName[MAX_PLAYER_NAME];
+                GetPlayerName(playerid, giverName, sizeof(giverName));
+
+                new messageToPlayer[120 + MAX_PLAYER_NAME];
+                format(messageToPlayer, sizeof(messageToPlayer), "Admin %s : %s", giverName, pmMessage);
+
+                SendClientMessage(playerid, COLOR_YELLOW, messageToPlayer);
+                SendClientMessage(takerId, COLOR_YELLOW, messageToPlayer);
+                return 1;
+            } else {
+                SendClientMessage(playerid, COLOR_RED, "Playerul nu este conectat!");
+                return 1;
+            }
+        }
+    } else {
+        SendClientMessage(playerid, COLOR_RED, "Nu poti folosi acesta comanda deoarece nu esti admin!");
+        return 1;
+    }
 }
 
 COMMAND:skemamilsugiana(playerid, params[]) {
-    return 1;
-}
-
-COMMAND:setfactionleader(playerid, params[]) {
-    new input[3];
-    if (sscanf(params, "rs[4]", input[0], input[1])) {
-        SendClientMessage(playerid, 0xFF0000FF, "Foloseste: /setfactionleader <id lider> <RDT | SP>");
-    } else {
-        if (IsPlayerAdmin(playerid)) {
-            if (IsPlayerConnected(input[0])) {
-                new name[30];
-                GetPlayerName(input[0], name, sizeof(name));
-                new query[150];
-                format(query, sizeof(query),
-                    "UPDATE Players SET player_faction = '%s', faction_rank = '%s' WHERE player_name = '%s'",
-                    input[1], "7", name);
-                if (db_free_result(db_query(connection, query)) == 1) {
-                    new message[150];
-                    format(message, sizeof(message), "Noul lider al mafiei %s este %s. Felicitari!", input[1], name);
-                    SendClientMessageToAll(0x00FF00FF, message);
-                }
-            }
-        }
-    }
-    return 1;
-}
-
-COMMAND:setfactionmember(playerid, params[]) {
     return 1;
 }
