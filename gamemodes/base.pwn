@@ -18,9 +18,7 @@
 #define DIALOG_REGISTER 1338
 
 /*
-TODO: - fix list members
-        - change drugs timer to 15 min
-        - fix war textdraws
+TODO: - fix war textdraws
 */
 
 // PRESSED(keys)
@@ -153,6 +151,7 @@ public OnPlayerConnect(playerid) {
     players[playerid][bests] = 0;
     players[playerid][worsts] = 0;
     SetPVarInt(playerid, "areTurfsShown", 0);
+    SetPVarInt(playerid, "presentOnWar", 0);
 
     new query[45 + MAX_PLAYER_NAME];
 
@@ -194,16 +193,6 @@ public OnPlayerSpawn(playerid) {
             SetPlayerInterior(playerid, 18);
         case CIVILIAN:
             SetPlayerInterior(playerid, 0);
-    }
-    if (!checkIfCivil(playerid)) {
-        new isWarOnStatus = GetSVarInt("isWarOn");
-        if (isWarOnStatus == 1) {
-            new warTurfId = GetSVarInt("warTurf");
-            SetPlayerVirtualWorld(playerid, 2);
-            displayWarTextDraw(playerid);
-            ZoneFlashForPlayer(playerid, turfs[warTurfId][id], 0xFFFFFFAA);
-            SendClientMessage(playerid, COLOR_BLUE, "Ai fost respawnat la HQ deoarece un war este in desfasurare!");
-        }
     }
     return 1;
 }
@@ -296,13 +285,6 @@ public OnPlayerPickUpDynamicPickup(playerid, pickupid) {
         SendClientMessage(playerid, COLOR_GREEN, "Ai gasit niste arme pe jos si ai luat 100 de gloante!");
     }
 }
-
-// forward OnCheatDetected(playerid, ip_address[], type, code);
-// public OnCheatDetected(playerid, ip_address[], type, code) {
-//     new message[128];
-//     format(message, sizeof(message), "Jucatorul cu id: %d, cu adresa ip: %s, a folosit coduri: tip: %d, cod: %d", playerid, ip_address, type, code);
-//     SendClientMessageToAll(COLOR_RED, message);
-// }
 
 // -------------------- DB --------------------
 
@@ -866,6 +848,32 @@ buildMembersList(playerFaction) {
 }
 
 // -------------------- FACTION COMMANDS --------------------
+COMMAND:joinwar(playerid, params[]) {
+    new warStatus = GetSVarInt("isWarOn");
+    if (warStatus == 1) {
+        new isPlayerOnWar = GetPVarInt(playerid, "presentOnWar");
+        if (isPlayerOnWar == 0) {
+            if (!checkIfCivil(playerid)) {
+                new attackedTurfId = GetSVarInt("warTurf");
+                SetPlayerVirtualWorld(playerid, 2);
+                SpawnPlayer(playerid);
+                displayWarTextDraw(playerid);
+                SetPVarInt(playerid, "presentOnWar", 1);
+                ZoneFlashForAll(turfs[attackedTurfId][id], 0xFFFFFFAA);
+                SendClientMessage(playerid, COLOR_BLUE, "Ai fost respawnat la HQ deoarece va incepe war-ul");
+                return 1;
+            }
+        } else {
+            SendClientMessage(playerid, COLOR_RED, "Deja esti prezent la war!");
+            return 1;
+        }
+    } else {
+        SendClientMessage(playerid, COLOR_RED, "Nu este niciun war in desfasurare!");
+        return 1;
+    }
+    return 1;
+}
+
 COMMAND:fvr(playerid, params[]) {
     new playerFactionRank = getPlayerFactionRank(playerid);
 
@@ -1613,6 +1621,7 @@ preparePlayersForWar(attackedTurfId) {
             SetPlayerVirtualWorld(playerid, 2);
             SpawnPlayer(playerid);
             displayWarTextDraw(playerid);
+            SetPVarInt(playerid, "presentOnWar", 1);
             ZoneFlashForAll(turfs[attackedTurfId][id], 0xFFFFFFAA);
             SendClientMessage(playerid, COLOR_BLUE, "Ai fost respawnat la HQ deoarece va incepe war-ul");
         }
