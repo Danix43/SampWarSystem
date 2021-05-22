@@ -1977,5 +1977,33 @@ COMMAND:setfactionleader(playerid, params[]) {
 }
 
 COMMAND:setfactionmember(playerid, params[]) {
-    return 1;
+    if (IsPlayerAdmin(playerid)) {
+        new takerId;
+        new takerRank;
+        new takerMafia[4];
+        if (sscanf(params, "urs[4]", takerId, takerRank, takerMafia)) {
+            SendClientMessage(playerid, COLOR_RED, "Foloseste: /setfactionmember <id | nume player> <rank> <SP | RDT>");
+            return 1;
+        } else {
+            new playerName[MAX_PLAYER_NAME];
+            GetPlayerName(takerId, playerName, sizeof(playerName));
+
+            new spFaction[4], rdtFaction[4];
+            spFaction = "SP";
+            rdtFaction = "RDT";
+            if (isequal(takerMafia, spFaction)) {
+                players[takerId][faction] = SP;
+                players[takerId][rank] = takerRank;
+                putSP(takerId, players[takerId][rank]);
+            } else if (isequal(takerMafia, rdtFaction)) {
+                players[takerId][faction] = RDT;
+                players[takerId][rank] = takerRank;
+                putRDT(takerId, players[takerId][rank]);
+            }
+            return 1;
+        }
+    } else {
+        SendClientMessage(playerid, COLOR_RED, "Nu este admin pentru a folosi aceasta comanda!");
+        return 1;
+    }
 }

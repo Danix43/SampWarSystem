@@ -7,6 +7,20 @@
 
 static DB:connection;
 
+enum {
+    COLOR_RED = 0xFF0000FF,
+        COLOR_GREEN = 0x00FF00FF,
+        COLOR_BLUE = 0x00FFFFFF,
+        COLOR_PURPLE = 0x8A2BE2FF,
+        COLOR_GREY = 0xAAAAAAFF,
+        COLOR_WHITE = 0xFFFFFFFF,
+        COLOR_YELLOW = 0xFFFF00FF
+}
+
+// PRESSED(keys)
+#define PRESSED(%0) \
+(((newkeys & ( % 0)) == ( % 0)) && ((oldkeys & ( % 0)) != ( % 0)))
+
 // ----------------------- GAME CALLBACKS ----------------------- 
 
 public OnFilterScriptInit() {
@@ -18,6 +32,13 @@ public OnFilterScriptExit() {
     if (db_close(connection)) {
         connection = DB:0;
     }
+}
+
+public OnPlayerKeyStateChange(playerid, newkeys, oldkeys) {
+    if ((newkeys & KEY_SECONDARY_ATTACK) && !(oldkeys & KEY_SECONDARY_ATTACK)) {
+
+    }
+    return 1;
 }
 
 // ----------------------- SETUPS ----------------------- 
@@ -34,7 +55,18 @@ loadDB() {
 // --------------------- COMMANDS --------------------- 
 
 COMMAND:spec(playerid, params[]) {
-    return 1;
+    if (IsPlayerAdmin(playerid)) {
+        new takerId;
+        if (sscanf(params, "r", takerId)) {
+            SendClientMessage(playerid, COLOR_RED, "Foloseste: /spec <id | nume player>");
+            return 1;
+        } else {
+            return 1;
+        }
+    } else {
+        SendClientMessage(playerid, COLOR_RED, "Nu poti folosi acesta comanda deoarece nu esti admin!");
+        return 1;
+    }
 }
 
 COMMAND:ban(playerid, params[]) {
